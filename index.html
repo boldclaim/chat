@@ -335,9 +335,18 @@
 
           <div>
             <label class="text-xs font-medium text-zinc-500 dark:text-zinc-400 uppercase tracking-wide">Modell</label>
-            <input x-model="settings.model"
-                   :placeholder="defaultModel(settings.provider)"
-                   class="mt-1.5 w-full bg-stone-50 dark:bg-zinc-950 border border-zinc-300 dark:border-zinc-700 rounded-lg px-3 py-2 text-sm font-mono focus:outline-none focus:border-zinc-500 dark:focus:border-zinc-500">
+            <select :value="customMode ? '__custom__' : settings.model"
+                    @change="onModelSelect($event.target.value)"
+                    class="mt-1.5 w-full bg-stone-50 dark:bg-zinc-950 border border-zinc-300 dark:border-zinc-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-zinc-500 dark:focus:border-zinc-500">
+              <template x-for="m in modelsForProvider()" :key="m.id">
+                <option :value="m.id" x-text="m.label"></option>
+              </template>
+              <option value="__custom__">Eigenes Modell eingeben...</option>
+            </select>
+            <input x-show="customMode"
+                   x-model="settings.model"
+                   placeholder="exakter Modellname"
+                   class="mt-2 w-full bg-stone-50 dark:bg-zinc-950 border border-zinc-300 dark:border-zinc-700 rounded-lg px-3 py-2 text-sm font-mono focus:outline-none focus:border-zinc-500">
           </div>
 
           <div>
@@ -467,39 +476,71 @@
 
   const PROVIDERS = {
     anthropic: {
-      defaultModel: 'claude-sonnet-4-6',
+      defaultModel: 'claude-opus-4-7',
       keyPlaceholder: 'sk-ant-...',
       keyPattern: /^sk-ant-/,
       url: 'https://api.anthropic.com/v1/messages',
-      vision: true
+      vision: true,
+      models: [
+        { id: 'claude-opus-4-7',   label: 'Opus 4.7 (best, teuerster)' },
+        { id: 'claude-sonnet-4-6', label: 'Sonnet 4.6 (balanced)' },
+        { id: 'claude-haiku-4-5',  label: 'Haiku 4.5 (fast, günstig)' },
+        { id: 'claude-opus-4-6',   label: 'Opus 4.6' },
+        { id: 'claude-sonnet-4-5', label: 'Sonnet 4.5' }
+      ]
     },
     openai: {
       defaultModel: 'gpt-5',
       keyPlaceholder: 'sk-...',
       keyPattern: /^sk-/,
       url: 'https://api.openai.com/v1/chat/completions',
-      vision: true
+      vision: true,
+      models: [
+        { id: 'gpt-5',       label: 'GPT-5 (flagship)' },
+        { id: 'gpt-5-mini',  label: 'GPT-5 mini (günstig)' },
+        { id: 'gpt-4o',      label: 'GPT-4o' },
+        { id: 'gpt-4o-mini', label: 'GPT-4o mini' }
+      ]
     },
     moonshot: {
       defaultModel: 'kimi-k2-0926',
       keyPlaceholder: 'sk-...',
       keyPattern: /^sk-/,
       url: 'https://api.moonshot.cn/v1/chat/completions',
-      vision: false
+      vision: false,
+      models: [
+        { id: 'kimi-k2-0926',  label: 'Kimi K2 0926' },
+        { id: 'kimi-k2-turbo', label: 'Kimi K2 Turbo' }
+      ]
     },
     openrouter: {
-      defaultModel: 'anthropic/claude-sonnet-4.6',
+      defaultModel: 'anthropic/claude-opus-4.7',
       keyPlaceholder: 'sk-or-...',
       keyPattern: /^sk-or-/,
       url: 'https://openrouter.ai/api/v1/chat/completions',
-      vision: true
+      vision: true,
+      models: [
+        { id: 'anthropic/claude-opus-4.7',   label: 'Claude Opus 4.7' },
+        { id: 'anthropic/claude-sonnet-4.6', label: 'Claude Sonnet 4.6' },
+        { id: 'anthropic/claude-haiku-4.5',  label: 'Claude Haiku 4.5' },
+        { id: 'openai/gpt-5',                label: 'GPT-5' },
+        { id: 'openai/gpt-5-mini',           label: 'GPT-5 mini' },
+        { id: 'moonshot/kimi-k2',            label: 'Kimi K2' },
+        { id: 'deepseek/deepseek-chat',      label: 'DeepSeek' }
+      ]
     },
     ollama: {
       defaultModel: 'llama3.2',
       keyPlaceholder: 'http://localhost:11434',
       keyPattern: /./,
       url: 'http://localhost:11434/api/chat',
-      vision: false
+      vision: false,
+      models: [
+        { id: 'llama3.2',  label: 'Llama 3.2' },
+        { id: 'llama3.1',  label: 'Llama 3.1' },
+        { id: 'qwen2.5',   label: 'Qwen 2.5' },
+        { id: 'mistral',   label: 'Mistral' }
+      ]
     }
   };
 
@@ -535,6 +576,7 @@
       archive: [],
       activeConvId: null,
       dark: document.documentElement.classList.contains('dark'),
+      customMode: false,
 
       settings: {
         provider: 'anthropic',
@@ -552,6 +594,7 @@
           try { Object.assign(this.settings, JSON.parse(saved)); } catch (e) {}
         }
         if (!this.settings.model) this.settings.model = this.defaultModel(this.settings.provider);
+        this.customMode = !this.modelsForProvider().some(m => m.id === this.settings.model);
         this.loadArchive();
         const session = localStorage.getItem('boldclaim_session_v2');
         if (session) {
@@ -588,6 +631,16 @@
       },
       defaultModel(p) { return PROVIDERS[p]?.defaultModel || ''; },
       keyPlaceholder(p) { return PROVIDERS[p]?.keyPlaceholder || ''; },
+      modelsForProvider() { return PROVIDERS[this.settings.provider]?.models || []; },
+      onModelSelect(value) {
+        if (value === '__custom__') {
+          this.customMode = true;
+          this.settings.model = '';
+        } else {
+          this.customMode = false;
+          this.settings.model = value;
+        }
+      },
       testStatusColor() {
         if (this.testStatusOk === true) return 'text-emerald-600 dark:text-emerald-400';
         if (this.testStatusOk === false) return 'text-red-600 dark:text-red-400';
@@ -604,6 +657,7 @@
       // Settings
       onProviderChange() {
         this.settings.model = this.defaultModel(this.settings.provider);
+        this.customMode = false;
         this.testStatus = '';
         this.testStatusOk = null;
       },
