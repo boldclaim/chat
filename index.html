@@ -137,7 +137,7 @@
          @click.outside="sidebarOpen = window.innerWidth >= 1024"
          class="fixed sm:static inset-y-0 left-0 z-30 w-72 bg-white dark:bg-zinc-900 border-r border-zinc-200 dark:border-zinc-800 flex flex-col shrink-0">
     <div class="h-12 px-4 flex items-center justify-between border-b border-zinc-200 dark:border-zinc-800">
-      <span class="text-sm font-semibold tracking-tight">Verlauf</span>
+      <span class="text-sm font-semibold tracking-tight" x-text="t('sidebar.history')"></span>
       <button @click="sidebarOpen=false" class="lg:hidden p-1.5 rounded text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
       </button>
@@ -145,7 +145,7 @@
     <button @click="newChat()"
             class="m-3 px-3 py-2 text-sm font-medium rounded-lg bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 hover:bg-zinc-800 dark:hover:bg-white transition flex items-center justify-center gap-2 shrink-0">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
-      Neuer Chat
+      <span x-text="t('sidebar.newChat')"></span>
     </button>
     <div class="flex-1 overflow-y-auto scroll-area px-2 pb-3 space-y-1">
       <template x-for="conv in archive" :key="conv.id">
@@ -161,13 +161,9 @@
           </button>
         </div>
       </template>
-      <div x-show="archive.length === 0" class="text-center text-xs text-zinc-400 dark:text-zinc-600 mt-8 px-4">
-        Hier landen deine Conversations.<br>Erste schreiben, dann erscheint sie.
-      </div>
+      <div x-show="archive.length === 0" class="text-center text-xs text-zinc-400 dark:text-zinc-600 mt-8 px-4" x-text="t('sidebar.empty')"></div>
     </div>
-    <div class="p-3 border-t border-zinc-200 dark:border-zinc-800 text-[11px] text-zinc-400 dark:text-zinc-600">
-      Lokal gespeichert. Wir sehen nichts.
-    </div>
+    <div class="p-3 border-t border-zinc-200 dark:border-zinc-800 text-[11px] text-zinc-400 dark:text-zinc-600" x-text="t('sidebar.privacy')"></div>
   </aside>
 
   <!-- Sidebar overlay (mobile) -->
@@ -190,7 +186,16 @@
         <span class="text-xs text-zinc-400 dark:text-zinc-600 font-mono hidden sm:inline">v2</span>
       </div>
       <div class="flex items-center gap-1">
-        <button @click="toggleTheme()" :title="dark ? 'Light Mode' : 'Dark Mode'"
+        <!-- Language toggle (site-wide) -->
+        <div class="flex items-center text-[11px] font-mono mr-1 rounded-md overflow-hidden border border-zinc-200 dark:border-zinc-800">
+          <button @click="setLang('de')"
+                  :class="settings.lang==='de' ? 'bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900' : 'bg-transparent text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100'"
+                  class="px-2 py-1 transition">DE</button>
+          <button @click="setLang('en')"
+                  :class="settings.lang==='en' ? 'bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900' : 'bg-transparent text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100'"
+                  class="px-2 py-1 transition">EN</button>
+        </div>
+        <button @click="toggleTheme()" :title="dark ? t('theme.light') : t('theme.dark')"
                 class="p-2 rounded-md text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition">
           <svg x-show="!dark" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>
           <svg x-show="dark" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
@@ -205,9 +210,9 @@
     <!-- Onboarding banner (no key) -->
     <div x-show="!hasKey() && !settingsOpen && messages.length === 0"
          class="bg-amber-100 dark:bg-amber-500/10 border-b border-amber-300 dark:border-amber-500/30 text-amber-900 dark:text-amber-200 text-sm px-4 sm:px-6 py-2 flex items-center justify-between">
-      <span>Du brauchst einen API-Key. Setup in 60 Sekunden.</span>
+      <span x-text="t('banner.needKey')"></span>
       <button @click="settingsOpen=true; settingsTab='onboarding'"
-              class="font-semibold underline hover:no-underline">Einrichten</button>
+              class="font-semibold underline hover:no-underline" x-text="t('banner.setup')"></button>
     </div>
 
     <!-- Main scroll area -->
@@ -219,23 +224,20 @@
 
       <!-- Welcome state -->
       <div x-show="messages.length === 0" class="hero-bg max-w-2xl mx-auto px-6 pt-16 sm:pt-24 pb-8">
-        <h1 class="text-3xl sm:text-5xl font-semibold tracking-tight">Paste, drop, counter.</h1>
-        <p class="mt-4 text-zinc-600 dark:text-zinc-400 text-lg max-w-xl">
-          Reddit-Comment einfügen, Screenshot droppen, oder Thema beschreiben.
-          Boldclaim antwortet sachlich, mit Quellen, in deinem Ton.
-        </p>
+        <h1 class="text-3xl sm:text-5xl font-semibold tracking-tight" x-text="t('welcome.title')"></h1>
+        <p class="mt-4 text-zinc-600 dark:text-zinc-400 text-lg max-w-xl" x-text="t('welcome.sub')"></p>
         <div class="mt-8 flex flex-wrap gap-2">
-          <template x-for="t in topics" :key="t.label">
-            <button @click="usePill(t)"
+          <template x-for="topic in topics" :key="topic.label">
+            <button @click="usePill(topic)"
                     class="topic-pill text-sm px-3.5 py-1.5 rounded-full bg-white dark:bg-zinc-800/70 hover:bg-zinc-50 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-200 border border-zinc-200 dark:border-zinc-700 hover:border-zinc-300 dark:hover:border-zinc-600 shadow-sm">
-              <span x-text="t.label"></span>
+              <span x-text="topic.label"></span>
             </button>
           </template>
         </div>
         <div class="mt-12 flex flex-wrap gap-x-3 gap-y-1 text-xs text-zinc-500 dark:text-zinc-500">
-          <button @click="settingsOpen=true; settingsTab='onboarding'" class="underline hover:text-zinc-700 dark:hover:text-zinc-300">Setup-Anleitung</button>
-          <button @click="settingsOpen=true; settingsTab='privacy'" class="underline hover:text-zinc-700 dark:hover:text-zinc-300">Privacy</button>
-          <a href="https://github.com/boldclaim/chat" target="_blank" rel="noopener" class="underline hover:text-zinc-700 dark:hover:text-zinc-300">Code</a>
+          <button @click="settingsOpen=true; settingsTab='onboarding'" class="underline hover:text-zinc-700 dark:hover:text-zinc-300" x-text="t('welcome.setup')"></button>
+          <button @click="settingsOpen=true; settingsTab='privacy'" class="underline hover:text-zinc-700 dark:hover:text-zinc-300" x-text="t('welcome.privacy')"></button>
+          <a href="https://github.com/boldclaim/chat" target="_blank" rel="noopener" class="underline hover:text-zinc-700 dark:hover:text-zinc-300" x-text="t('welcome.code')"></a>
         </div>
       </div>
 
@@ -269,8 +271,8 @@
                            class="mb-3 rounded-lg border border-amber-200 dark:border-amber-900/40 bg-amber-50 dark:bg-amber-500/5 group">
                     <summary class="px-3 py-2 cursor-pointer text-xs font-semibold text-amber-900 dark:text-amber-200 list-none flex items-center gap-2 select-none">
                       <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="transition group-open:rotate-90"><polyline points="9 18 15 12 9 6"/></svg>
-                      Analyse des Gegner-Kommentars
-                      <span class="ml-auto text-[10px] font-normal opacity-60">(nicht zum Posten)</span>
+                      <span x-text="t('msg.analysisTitle')"></span>
+                      <span class="ml-auto text-[10px] font-normal opacity-60" x-text="t('msg.analysisHint')"></span>
                     </summary>
                     <div class="px-3 pb-3 pt-1 prose-content text-[14px] text-amber-950 dark:text-amber-100"
                          x-html="renderMarkdown(splitContent(msg.content).analysis)"></div>
@@ -288,17 +290,17 @@
                 <div class="mt-2.5 pt-2 border-t border-zinc-100 dark:border-zinc-800 flex flex-wrap items-center gap-3 text-xs text-zinc-500">
                   <button @click="copyAs(msg, 'reddit', $event)" class="hover:text-zinc-900 dark:hover:text-zinc-200 flex items-center gap-1">
                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
-                    <span x-text="msg.copiedAs === 'reddit' ? '✓ Reddit' : 'Reddit (Markdown)'"></span>
+                    <span x-text="msg.copiedAs === 'reddit' ? t('msg.copiedReddit') : t('msg.copyReddit')"></span>
                   </button>
                   <button @click="copyAs(msg, 'plain', $event)" class="hover:text-zinc-900 dark:hover:text-zinc-200 flex items-center gap-1">
                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-                    <span x-text="msg.copiedAs === 'plain' ? '✓ Plain' : 'Plain Text'"></span>
+                    <span x-text="msg.copiedAs === 'plain' ? t('msg.copiedPlain') : t('msg.copyPlain')"></span>
                   </button>
                   <template x-if="msg.sources && msg.sources.length">
                     <details class="group">
                       <summary class="cursor-pointer hover:text-zinc-900 dark:hover:text-zinc-200 list-none flex items-center gap-1">
                         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="transition group-open:rotate-90"><polyline points="9 18 15 12 9 6"/></svg>
-                        <span>Quellen (<span x-text="msg.sources.length"></span>)</span>
+                        <span x-text="t('msg.sources') + ' (' + msg.sources.length + ')'"></span>
                       </summary>
                       <div class="mt-2 space-y-1.5 text-zinc-600 dark:text-zinc-400">
                         <template x-for="(s, i) in msg.sources" :key="i">
@@ -330,31 +332,25 @@
     <footer class="border-t border-zinc-200 dark:border-zinc-800 px-3 sm:px-4 pt-3 pb-4 shrink-0 bg-stone-50 dark:bg-zinc-950">
       <div class="max-w-2xl mx-auto">
 
-        <!-- Quick platform/tone/lang selectors -->
+        <!-- Quick platform/tone selectors -->
         <div class="flex flex-wrap items-center gap-1.5 mb-2 px-1 text-xs">
-          <span class="text-zinc-400 dark:text-zinc-600">Für</span>
+          <span class="text-zinc-400 dark:text-zinc-600" x-text="t('comp.for')"></span>
           <select x-model="settings.platform" @change="saveSettings()"
                   class="bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-md px-2 py-1 font-medium text-zinc-700 dark:text-zinc-300 focus:outline-none focus:border-zinc-400 dark:focus:border-zinc-600 cursor-pointer">
-            <option>Reddit</option>
-            <option>X/Twitter</option>
-            <option>Mündlich</option>
-            <option>WhatsApp</option>
+            <option value="Reddit" x-text="t('platform.reddit')"></option>
+            <option value="X/Twitter" x-text="t('platform.twitter')"></option>
+            <option value="Mündlich" x-text="t('platform.spoken')"></option>
+            <option value="WhatsApp" x-text="t('platform.whatsapp')"></option>
           </select>
-          <span class="text-zinc-400 dark:text-zinc-600">im Ton</span>
+          <span class="text-zinc-400 dark:text-zinc-600" x-text="t('comp.tone')"></span>
           <select x-model="settings.tone" @change="saveSettings()"
                   class="bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-md px-2 py-1 font-medium text-zinc-700 dark:text-zinc-300 focus:outline-none focus:border-zinc-400 dark:focus:border-zinc-600 cursor-pointer">
-            <option>Sachlich</option>
-            <option>Hämisch</option>
-            <option>Gungho</option>
-            <option>De-eskalierend</option>
-            <option>Fact-Check pur</option>
-            <option>Taktik entblößen</option>
-          </select>
-          <span class="text-zinc-400 dark:text-zinc-600">in</span>
-          <select x-model="settings.lang" @change="saveSettings()"
-                  class="bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-md px-2 py-1 font-medium text-zinc-700 dark:text-zinc-300 focus:outline-none focus:border-zinc-400 dark:focus:border-zinc-600 cursor-pointer">
-            <option value="de">Deutsch</option>
-            <option value="en">English</option>
+            <option value="Sachlich" x-text="t('tone.factual')"></option>
+            <option value="Hämisch" x-text="t('tone.snarky')"></option>
+            <option value="Gungho" x-text="t('tone.gungho')"></option>
+            <option value="De-eskalierend" x-text="t('tone.deescalate')"></option>
+            <option value="Fact-Check pur" x-text="t('tone.factcheck')"></option>
+            <option value="Taktik entblößen" x-text="t('tone.expose')"></option>
           </select>
         </div>
 
@@ -371,7 +367,7 @@
 
         <div class="flex items-end gap-2 bg-white dark:bg-zinc-800/70 rounded-2xl px-3 py-2 border border-zinc-300 dark:border-zinc-700 ring-1 ring-zinc-900/5 dark:ring-white/5 shadow-lg shadow-zinc-900/5 dark:shadow-black/40 focus-within:border-zinc-400 dark:focus-within:border-zinc-600 focus-within:ring-zinc-900/10 dark:focus-within:ring-white/10 transition">
           <button @click="$refs.fileInput.click()"
-                  title="Bild anhängen"
+                  :title="t('comp.attach')"
                   class="p-1.5 text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-200 transition shrink-0">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
           </button>
@@ -382,7 +378,7 @@
                     @keydown.cmd.enter.prevent="send()"
                     @keydown.ctrl.enter.prevent="send()"
                     rows="1"
-                    :placeholder="busy ? 'Boldclaim antwortet...' : 'Comment einfügen, Bild droppen oder Thema beschreiben...'"
+                    :placeholder="busy ? t('comp.busy') : t('comp.placeholder')"
                     :disabled="busy"
                     class="flex-1 bg-transparent resize-none outline-none text-[15px] py-1.5 max-h-48 placeholder-zinc-400 dark:placeholder-zinc-500 text-zinc-900 dark:text-zinc-50"></textarea>
           <button @click="busy ? cancel() : send()"
@@ -399,7 +395,7 @@
         </div>
         <div class="mt-1.5 px-2 flex items-center justify-between text-[11px] text-zinc-500 dark:text-zinc-500">
           <span x-text="modelLabel()"></span>
-          <span x-show="messages.length > 0" x-text="`${countUserMsgs()} Turn${countUserMsgs()===1?'':'s'}`"></span>
+          <span x-show="messages.length > 0" x-text="countUserMsgs() + ' ' + (countUserMsgs()===1 ? t('comp.turn') : t('comp.turns'))"></span>
         </div>
       </div>
     </footer>
@@ -408,9 +404,9 @@
   <!-- Right sidebar: section structure of latest assistant message -->
   <aside class="hidden lg:flex flex-col w-72 border-l border-zinc-200 dark:border-zinc-800 bg-stone-50 dark:bg-zinc-950 shrink-0">
     <div class="h-12 px-4 flex items-center justify-between border-b border-zinc-200 dark:border-zinc-800">
-      <span class="text-sm font-semibold tracking-tight">Aufbau</span>
+      <span class="text-sm font-semibold tracking-tight" x-text="t('right.title')"></span>
       <span class="text-[11px] text-zinc-400 dark:text-zinc-600" x-show="lastAssistantSections().length"
-            x-text="lastAssistantSections().length + ' Sections'"></span>
+            x-text="lastAssistantSections().length + ' ' + t('right.sections')"></span>
     </div>
     <div class="flex-1 overflow-y-auto scroll-area p-3 space-y-1">
       <template x-for="(sec, i) in lastAssistantSections()" :key="sec.id">
@@ -423,12 +419,8 @@
           <span class="leading-tight" x-text="sec.title"></span>
         </button>
       </template>
-      <div x-show="messages.length > 0 && lastAssistantSections().length === 0" class="text-xs text-zinc-400 dark:text-zinc-600 text-center mt-8 px-2">
-        Aktuelle Antwort hat keine Section-Struktur. Probier den Ton "Taktik entblößen" oder "Gungho".
-      </div>
-      <div x-show="messages.length === 0" class="text-xs text-zinc-400 dark:text-zinc-600 text-center mt-8 px-2">
-        Hier zeigt sich der Aufbau jeder Boldclaim-Antwort. Sections kommen aus den Markdown-Headern (## ...).
-      </div>
+      <div x-show="messages.length > 0 && lastAssistantSections().length === 0" class="text-xs text-zinc-400 dark:text-zinc-600 text-center mt-8 px-2" x-text="t('right.noSections')"></div>
+      <div x-show="messages.length === 0" class="text-xs text-zinc-400 dark:text-zinc-600 text-center mt-8 px-2" x-text="t('right.welcomeHint')"></div>
     </div>
   </aside>
 
@@ -444,13 +436,13 @@
       <div class="flex border-b border-zinc-200 dark:border-zinc-800 sticky top-0 bg-white dark:bg-zinc-900 z-10">
         <button @click="settingsTab='general'"
                 :class="settingsTab==='general' ? 'text-zinc-900 dark:text-zinc-100 border-zinc-900 dark:border-zinc-100' : 'text-zinc-500 border-transparent'"
-                class="flex-1 py-3 text-sm font-medium border-b-2 transition">Allgemein</button>
+                class="flex-1 py-3 text-sm font-medium border-b-2 transition" x-text="t('set.tab.general')"></button>
         <button @click="settingsTab='onboarding'"
                 :class="settingsTab==='onboarding' ? 'text-zinc-900 dark:text-zinc-100 border-zinc-900 dark:border-zinc-100' : 'text-zinc-500 border-transparent'"
-                class="flex-1 py-3 text-sm font-medium border-b-2 transition">Setup</button>
+                class="flex-1 py-3 text-sm font-medium border-b-2 transition" x-text="t('set.tab.setup')"></button>
         <button @click="settingsTab='privacy'"
                 :class="settingsTab==='privacy' ? 'text-zinc-900 dark:text-zinc-100 border-zinc-900 dark:border-zinc-100' : 'text-zinc-500 border-transparent'"
-                class="flex-1 py-3 text-sm font-medium border-b-2 transition">Privacy</button>
+                class="flex-1 py-3 text-sm font-medium border-b-2 transition" x-text="t('set.tab.privacy')"></button>
       </div>
 
       <div class="p-5 space-y-5">
@@ -458,7 +450,7 @@
         <!-- General tab -->
         <div x-show="settingsTab==='general'" class="space-y-5">
           <div>
-            <label class="text-xs font-medium text-zinc-500 dark:text-zinc-400 uppercase tracking-wide">Provider</label>
+            <label class="text-xs font-medium text-zinc-500 dark:text-zinc-400 uppercase tracking-wide" x-text="t('set.provider')"></label>
             <select x-model="settings.provider" @change="onProviderChange()"
                     class="mt-1.5 w-full bg-stone-50 dark:bg-zinc-950 border border-zinc-300 dark:border-zinc-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-zinc-500 dark:focus:border-zinc-500">
               <option value="anthropic">Anthropic (Claude)</option>
@@ -470,23 +462,23 @@
           </div>
 
           <div>
-            <label class="text-xs font-medium text-zinc-500 dark:text-zinc-400 uppercase tracking-wide">Modell</label>
+            <label class="text-xs font-medium text-zinc-500 dark:text-zinc-400 uppercase tracking-wide" x-text="t('set.model')"></label>
             <select :value="customMode ? '__custom__' : settings.model"
                     @change="onModelSelect($event.target.value)"
                     class="mt-1.5 w-full bg-stone-50 dark:bg-zinc-950 border border-zinc-300 dark:border-zinc-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-zinc-500 dark:focus:border-zinc-500">
               <template x-for="m in modelsForProvider()" :key="m.id">
                 <option :value="m.id" x-text="m.label"></option>
               </template>
-              <option value="__custom__">Eigenes Modell eingeben...</option>
+              <option value="__custom__" x-text="t('set.customOpt')"></option>
             </select>
             <input x-show="customMode"
                    x-model="settings.model"
-                   placeholder="exakter Modellname"
+                   :placeholder="t('set.customPh')"
                    class="mt-2 w-full bg-stone-50 dark:bg-zinc-950 border border-zinc-300 dark:border-zinc-700 rounded-lg px-3 py-2 text-sm font-mono focus:outline-none focus:border-zinc-500">
           </div>
 
           <div>
-            <label class="text-xs font-medium text-zinc-500 dark:text-zinc-400 uppercase tracking-wide">API-Key</label>
+            <label class="text-xs font-medium text-zinc-500 dark:text-zinc-400 uppercase tracking-wide" x-text="t('set.apiKey')"></label>
             <div class="mt-1.5 flex gap-2">
               <input :type="showKey ? 'text' : 'password'"
                      x-model="settings.apiKey"
@@ -494,14 +486,14 @@
                      class="flex-1 bg-stone-50 dark:bg-zinc-950 border border-zinc-300 dark:border-zinc-700 rounded-lg px-3 py-2 text-sm font-mono focus:outline-none focus:border-zinc-500 dark:focus:border-zinc-500">
               <button @click="showKey=!showKey"
                       class="px-3 bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 rounded-lg text-sm border border-zinc-300 dark:border-zinc-700">
-                <span x-text="showKey ? 'verbergen' : 'zeigen'"></span>
+                <span x-text="showKey ? t('set.hide') : t('set.show')"></span>
               </button>
             </div>
             <div class="mt-2 flex items-center gap-2">
               <button @click="testKey()"
                       :disabled="!settings.apiKey || testing"
                       class="text-xs px-3 py-1.5 bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 hover:bg-black dark:hover:bg-white rounded-md font-medium disabled:opacity-50">
-                <span x-text="testing ? 'teste...' : 'Verbindung testen'"></span>
+                <span x-text="testing ? t('set.testing') : t('set.test')"></span>
               </button>
               <span class="text-xs" :class="testStatusColor()" x-text="testStatus"></span>
             </div>
@@ -509,90 +501,84 @@
 
           <div class="grid grid-cols-2 gap-3">
             <div>
-              <label class="text-xs font-medium text-zinc-500 dark:text-zinc-400 uppercase tracking-wide">Plattform</label>
+              <label class="text-xs font-medium text-zinc-500 dark:text-zinc-400 uppercase tracking-wide" x-text="t('set.platform')"></label>
               <select x-model="settings.platform"
                       class="mt-1.5 w-full bg-stone-50 dark:bg-zinc-950 border border-zinc-300 dark:border-zinc-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-zinc-500">
-                <option>Reddit</option>
-                <option>X/Twitter</option>
-                <option>Mündlich</option>
-                <option>WhatsApp</option>
+                <option value="Reddit" x-text="t('platform.reddit')"></option>
+                <option value="X/Twitter" x-text="t('platform.twitter')"></option>
+                <option value="Mündlich" x-text="t('platform.spoken')"></option>
+                <option value="WhatsApp" x-text="t('platform.whatsapp')"></option>
               </select>
             </div>
             <div>
-              <label class="text-xs font-medium text-zinc-500 dark:text-zinc-400 uppercase tracking-wide">Ton</label>
+              <label class="text-xs font-medium text-zinc-500 dark:text-zinc-400 uppercase tracking-wide" x-text="t('set.tone')"></label>
               <select x-model="settings.tone"
                       class="mt-1.5 w-full bg-stone-50 dark:bg-zinc-950 border border-zinc-300 dark:border-zinc-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-zinc-500">
-                <option>Sachlich</option>
-                <option>Hämisch</option>
-                <option>Gungho</option>
-                <option>De-eskalierend</option>
-                <option>Fact-Check pur</option>
-                <option>Taktik entblößen</option>
+                <option value="Sachlich" x-text="t('tone.factual')"></option>
+                <option value="Hämisch" x-text="t('tone.snarky')"></option>
+                <option value="Gungho" x-text="t('tone.gungho')"></option>
+                <option value="De-eskalierend" x-text="t('tone.deescalate')"></option>
+                <option value="Fact-Check pur" x-text="t('tone.factcheck')"></option>
+                <option value="Taktik entblößen" x-text="t('tone.expose')"></option>
               </select>
             </div>
           </div>
 
           <div class="pt-3 border-t border-zinc-200 dark:border-zinc-800 space-y-2">
             <button @click="exportConversations()"
-                    class="w-full text-left text-sm px-3 py-2 bg-stone-50 dark:bg-zinc-950 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg border border-zinc-200 dark:border-zinc-800">
-              Conversation-History exportieren (JSON)
-            </button>
+                    class="w-full text-left text-sm px-3 py-2 bg-stone-50 dark:bg-zinc-950 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg border border-zinc-200 dark:border-zinc-800"
+                    x-text="t('set.export')"></button>
             <button @click="clearAll()"
-                    class="w-full text-left text-sm px-3 py-2 bg-red-50 dark:bg-red-500/5 hover:bg-red-100 dark:hover:bg-red-500/15 rounded-lg border border-red-200 dark:border-red-500/20 text-red-700 dark:text-red-300">
-              Alle lokalen Daten löschen
-            </button>
+                    class="w-full text-left text-sm px-3 py-2 bg-red-50 dark:bg-red-500/5 hover:bg-red-100 dark:hover:bg-red-500/15 rounded-lg border border-red-200 dark:border-red-500/20 text-red-700 dark:text-red-300"
+                    x-text="t('set.clear')"></button>
           </div>
         </div>
 
         <!-- Onboarding tab -->
         <div x-show="settingsTab==='onboarding'" class="space-y-4 text-sm">
-          <p class="text-zinc-700 dark:text-zinc-300">Boldclaim braucht einen API-Key von einem KI-Anbieter. Du wählst, du zahlst, du behältst die Kontrolle.</p>
+          <p class="text-zinc-700 dark:text-zinc-300" x-text="t('onb.intro')"></p>
 
           <div class="space-y-3">
             <div class="border border-zinc-200 dark:border-zinc-800 rounded-lg p-3 bg-stone-50 dark:bg-zinc-950/50">
-              <div class="font-semibold text-zinc-900 dark:text-zinc-100">Anthropic (Claude) <span class="text-xs text-zinc-500 font-normal">empfohlen</span></div>
-              <div class="text-zinc-600 dark:text-zinc-400 text-xs mt-0.5">Beste Counter-Qualität. ~$0.01 pro Counter mit Sonnet.</div>
+              <div class="font-semibold text-zinc-900 dark:text-zinc-100">Anthropic (Claude) <span class="text-xs text-zinc-500 font-normal" x-text="t('onb.recommended')"></span></div>
+              <div class="text-zinc-600 dark:text-zinc-400 text-xs mt-0.5" x-text="t('onb.anthropic.desc')"></div>
               <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener"
-                 class="text-xs font-medium text-zinc-900 dark:text-zinc-100 underline mt-1 inline-block">Key holen →</a>
+                 class="text-xs font-medium text-zinc-900 dark:text-zinc-100 underline mt-1 inline-block" x-text="t('onb.getKey')"></a>
             </div>
             <div class="border border-zinc-200 dark:border-zinc-800 rounded-lg p-3 bg-stone-50 dark:bg-zinc-950/50">
               <div class="font-semibold text-zinc-900 dark:text-zinc-100">OpenAI (GPT)</div>
-              <div class="text-zinc-600 dark:text-zinc-400 text-xs mt-0.5">Solide Alternative. ~$0.01 pro Counter.</div>
+              <div class="text-zinc-600 dark:text-zinc-400 text-xs mt-0.5" x-text="t('onb.openai.desc')"></div>
               <a href="https://platform.openai.com/api-keys" target="_blank" rel="noopener"
-                 class="text-xs font-medium text-zinc-900 dark:text-zinc-100 underline mt-1 inline-block">Key holen →</a>
+                 class="text-xs font-medium text-zinc-900 dark:text-zinc-100 underline mt-1 inline-block" x-text="t('onb.getKey')"></a>
             </div>
             <div class="border border-zinc-200 dark:border-zinc-800 rounded-lg p-3 bg-stone-50 dark:bg-zinc-950/50">
               <div class="font-semibold text-zinc-900 dark:text-zinc-100">Moonshot (Kimi)</div>
-              <div class="text-zinc-600 dark:text-zinc-400 text-xs mt-0.5">Günstigste Option. ~$0.001 pro Counter.</div>
+              <div class="text-zinc-600 dark:text-zinc-400 text-xs mt-0.5" x-text="t('onb.moonshot.desc')"></div>
               <a href="https://platform.moonshot.cn" target="_blank" rel="noopener"
-                 class="text-xs font-medium text-zinc-900 dark:text-zinc-100 underline mt-1 inline-block">Key holen →</a>
+                 class="text-xs font-medium text-zinc-900 dark:text-zinc-100 underline mt-1 inline-block" x-text="t('onb.getKey')"></a>
             </div>
           </div>
 
           <button @click="settingsTab='general'"
-                  class="w-full bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 hover:bg-black dark:hover:bg-white rounded-lg py-2 text-sm font-semibold">
-            Weiter zu Provider-Auswahl
-          </button>
+                  class="w-full bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 hover:bg-black dark:hover:bg-white rounded-lg py-2 text-sm font-semibold"
+                  x-text="t('onb.continue')"></button>
         </div>
 
         <!-- Privacy tab -->
         <div x-show="settingsTab==='privacy'" class="space-y-3 text-sm text-zinc-700 dark:text-zinc-300">
-          <p class="font-semibold text-zinc-900 dark:text-zinc-100">So funktioniert Privacy bei Boldclaim:</p>
+          <p class="font-semibold text-zinc-900 dark:text-zinc-100" x-text="t('priv.head')"></p>
           <ol class="list-decimal pl-5 space-y-1.5 text-zinc-600 dark:text-zinc-400">
-            <li>Dein API-Key wird nur in deinem Browser gespeichert (localStorage).</li>
-            <li>Dein Counter-Text geht direkt von deinem Browser zu deinem Provider.</li>
-            <li>Boldclaim sieht beides nie. Wir loggen nichts.</li>
-            <li>Dein Provider (Anthropic, OpenAI, etc.) sieht deine Counter, das ist deren Job. Wir nicht.</li>
+            <li x-text="t('priv.1')"></li>
+            <li x-text="t('priv.2')"></li>
+            <li x-text="t('priv.3')"></li>
+            <li x-text="t('priv.4')"></li>
           </ol>
-          <p class="pt-2 text-xs text-zinc-500">
-            Quellcode öffentlich auf GitHub. Keine Cookies, keine Tracker, kein Analytics.
-          </p>
+          <p class="pt-2 text-xs text-zinc-500" x-text="t('priv.foot')"></p>
         </div>
 
         <button @click="saveSettings(); settingsOpen=false"
-                class="w-full bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 hover:bg-black dark:hover:bg-white rounded-lg py-2.5 text-sm font-semibold">
-          Speichern und schließen
-        </button>
+                class="w-full bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 hover:bg-black dark:hover:bg-white rounded-lg py-2.5 text-sm font-semibold"
+                x-text="t('set.save')"></button>
       </div>
     </div>
   </div>
@@ -681,16 +667,121 @@
     }
   };
 
-  const TOPICS = [
-    { label: 'Migration', sample: 'Mein Onkel sagt: "Bürgergeld nur für Migranten, Deutsche kriegen nichts mehr." Wie konter ich das?' },
-    { label: 'AfD', sample: 'Ein Kollege meint die AfD sei "die einzige normale Partei". Was sind die besten Gegenpunkte?' },
-    { label: 'Energie', sample: 'Schreib mir einen sachlichen Konter zu: "Die Energiewende hat uns die teuersten Strompreise Europas beschert."' },
-    { label: 'Bürgergeld', sample: 'Reddit-Comment: "Wer arbeiten geht ist der Dumme, Bürgergeld lohnt sich mehr." Konter?' },
-    { label: 'Klima', sample: 'Konter zu: "Deutschland macht 2% vom CO2 weltweit, was bringts?"' },
-    { label: 'Eliten', sample: '"Politiker bereichern sich, das System ist korrupt." — was sage ich dem?' },
-    { label: 'EU', sample: '"Die EU diktiert uns alles, raus da." Konter sachlich.' },
-    { label: 'Gender', sample: 'Konter zu: "Gendern zerstört die deutsche Sprache."' }
-  ];
+  const TOPICS = {
+    de: [
+      { label: 'Migration', sample: 'Mein Onkel sagt: "Bürgergeld nur für Migranten, Deutsche kriegen nichts mehr." Wie konter ich das?' },
+      { label: 'AfD', sample: 'Ein Kollege meint die AfD sei "die einzige normale Partei". Was sind die besten Gegenpunkte?' },
+      { label: 'Energie', sample: 'Schreib mir einen sachlichen Konter zu: "Die Energiewende hat uns die teuersten Strompreise Europas beschert."' },
+      { label: 'Bürgergeld', sample: 'Reddit-Comment: "Wer arbeiten geht ist der Dumme, Bürgergeld lohnt sich mehr." Konter?' },
+      { label: 'Klima', sample: 'Konter zu: "Deutschland macht 2% vom CO2 weltweit, was bringts?"' },
+      { label: 'Eliten', sample: '"Politiker bereichern sich, das System ist korrupt." — was sage ich dem?' },
+      { label: 'EU', sample: '"Die EU diktiert uns alles, raus da." Konter sachlich.' },
+      { label: 'Gender', sample: 'Konter zu: "Gendern zerstört die deutsche Sprache."' }
+    ],
+    en: [
+      { label: 'Migration', sample: 'My uncle says: "Welfare only for migrants, Germans get nothing." How do I counter that?' },
+      { label: 'Far-right', sample: 'A colleague says the AfD is "the only normal party". What are the best counter-points?' },
+      { label: 'Energy', sample: 'Give me a factual counter to: "The energy transition has given Germany the highest power prices in Europe."' },
+      { label: 'Welfare', sample: 'Reddit comment: "Working is for suckers, welfare pays better." Counter?' },
+      { label: 'Climate', sample: 'Counter to: "Germany is 2% of global CO2, what difference does it make?"' },
+      { label: 'Elites', sample: '"Politicians enrich themselves, the system is corrupt." — what do I say?' },
+      { label: 'EU', sample: '"The EU dictates everything, get out." Factual counter.' },
+      { label: 'Gender', sample: 'Counter to: "Gender-inclusive language is destroying English."' }
+    ]
+  };
+
+  const I18N = {
+    de: {
+      'header.history': 'Verlauf', 'header.new': 'Neuer Chat', 'header.settings': 'Einstellungen',
+      'theme.light': 'Light Mode', 'theme.dark': 'Dark Mode',
+      'sidebar.history': 'Verlauf', 'sidebar.newChat': 'Neuer Chat',
+      'sidebar.empty': 'Hier landen deine Conversations. Erste schreiben, dann erscheint sie.',
+      'sidebar.privacy': 'Lokal gespeichert. Wir sehen nichts.',
+      'right.title': 'Aufbau', 'right.sections': 'Sections',
+      'right.noSections': 'Aktuelle Antwort hat keine Section-Struktur. Probier den Ton "Taktik entblößen" oder "Gungho".',
+      'right.welcomeHint': 'Hier zeigt sich der Aufbau jeder Boldclaim-Antwort. Sections kommen aus Markdown-Headern (## ...).',
+      'banner.needKey': 'Du brauchst einen API-Key. Setup in 60 Sekunden.', 'banner.setup': 'Einrichten',
+      'welcome.title': 'Paste, drop, counter.',
+      'welcome.sub': 'Reddit-Comment einfügen, Screenshot droppen, oder Thema beschreiben. Boldclaim antwortet sachlich, mit Quellen, in deinem Ton.',
+      'welcome.setup': 'Setup-Anleitung', 'welcome.privacy': 'Privacy', 'welcome.code': 'Code',
+      'comp.for': 'Für', 'comp.tone': 'im Ton', 'comp.placeholder': 'Comment einfügen, Bild droppen oder Thema beschreiben...',
+      'comp.busy': 'Boldclaim antwortet...', 'comp.attach': 'Bild anhängen',
+      'comp.imgTooLarge': 'Bild zu groß (max 5 MB)', 'comp.turn': 'Turn', 'comp.turns': 'Turns',
+      'comp.noKey': 'Kein API-Key, Settings öffnen',
+      'platform.reddit': 'Reddit', 'platform.twitter': 'X/Twitter', 'platform.spoken': 'Mündlich', 'platform.whatsapp': 'WhatsApp',
+      'tone.factual': 'Sachlich', 'tone.snarky': 'Hämisch', 'tone.gungho': 'Gungho',
+      'tone.deescalate': 'De-eskalierend', 'tone.factcheck': 'Fact-Check pur', 'tone.expose': 'Taktik entblößen',
+      'msg.copyReddit': 'Reddit (Markdown)', 'msg.copyPlain': 'Plain Text',
+      'msg.copiedReddit': '✓ Reddit', 'msg.copiedPlain': '✓ Plain',
+      'msg.sources': 'Quellen', 'msg.analysisTitle': 'Analyse des Gegner-Kommentars',
+      'msg.analysisHint': '(nicht zum Posten)',
+      'set.tab.general': 'Allgemein', 'set.tab.setup': 'Setup', 'set.tab.privacy': 'Privacy',
+      'set.provider': 'Provider', 'set.model': 'Modell', 'set.customOpt': 'Eigenes Modell eingeben...',
+      'set.customPh': 'exakter Modellname', 'set.apiKey': 'API-Key', 'set.show': 'zeigen', 'set.hide': 'verbergen',
+      'set.test': 'Verbindung testen', 'set.testing': 'teste...', 'set.testOk': '✓ Verbunden', 'set.testReceived': 'Antwort erhalten',
+      'set.platform': 'Plattform', 'set.tone': 'Ton',
+      'set.export': 'Conversation-History exportieren (JSON)', 'set.clear': 'Alle lokalen Daten löschen',
+      'set.clearConfirm': 'Alle Settings, Conversations und API-Key löschen?',
+      'set.deleteConfConfirm': 'Diese Conversation löschen?', 'set.save': 'Speichern und schließen',
+      'onb.intro': 'Boldclaim braucht einen API-Key von einem KI-Anbieter. Du wählst, du zahlst, du behältst die Kontrolle.',
+      'onb.recommended': 'empfohlen',
+      'onb.anthropic.desc': 'Beste Counter-Qualität. ~$0.01 pro Counter mit Sonnet.',
+      'onb.openai.desc': 'Solide Alternative. ~$0.01 pro Counter.',
+      'onb.moonshot.desc': 'Günstigste Option. ~$0.001 pro Counter.',
+      'onb.getKey': 'Key holen →', 'onb.continue': 'Weiter zu Provider-Auswahl',
+      'priv.head': 'So funktioniert Privacy bei Boldclaim:',
+      'priv.1': 'Dein API-Key wird nur in deinem Browser gespeichert (localStorage).',
+      'priv.2': 'Dein Counter-Text geht direkt von deinem Browser zu deinem Provider.',
+      'priv.3': 'Boldclaim sieht beides nie. Wir loggen nichts.',
+      'priv.4': 'Dein Provider (Anthropic, OpenAI, etc.) sieht deine Counter, das ist deren Job. Wir nicht.',
+      'priv.foot': 'Quellcode öffentlich auf GitHub. Keine Cookies, keine Tracker, kein Analytics.'
+    },
+    en: {
+      'header.history': 'History', 'header.new': 'New chat', 'header.settings': 'Settings',
+      'theme.light': 'Light mode', 'theme.dark': 'Dark mode',
+      'sidebar.history': 'History', 'sidebar.newChat': 'New chat',
+      'sidebar.empty': 'Your conversations land here. Write the first one and it shows up.',
+      'sidebar.privacy': 'Stored locally. We see nothing.',
+      'right.title': 'Structure', 'right.sections': 'sections',
+      'right.noSections': 'Current reply has no section structure. Try the tone "Expose tactic" or "Gung-ho".',
+      'right.welcomeHint': 'Shows the structure of every Boldclaim reply. Sections come from Markdown headers (## ...).',
+      'banner.needKey': 'You need an API key. Setup in 60 seconds.', 'banner.setup': 'Set up',
+      'welcome.title': 'Paste, drop, counter.',
+      'welcome.sub': 'Paste a comment, drop a screenshot, or describe a topic. Boldclaim answers factually, with sources, in your tone.',
+      'welcome.setup': 'Setup guide', 'welcome.privacy': 'Privacy', 'welcome.code': 'Code',
+      'comp.for': 'For', 'comp.tone': 'in tone', 'comp.placeholder': 'Paste a comment, drop an image, or describe a topic...',
+      'comp.busy': 'Boldclaim is replying...', 'comp.attach': 'Attach image',
+      'comp.imgTooLarge': 'Image too large (max 5 MB)', 'comp.turn': 'turn', 'comp.turns': 'turns',
+      'comp.noKey': 'No API key, open Settings',
+      'platform.reddit': 'Reddit', 'platform.twitter': 'X/Twitter', 'platform.spoken': 'Spoken', 'platform.whatsapp': 'WhatsApp',
+      'tone.factual': 'Factual', 'tone.snarky': 'Snarky', 'tone.gungho': 'Gung-ho',
+      'tone.deescalate': 'De-escalating', 'tone.factcheck': 'Fact-check only', 'tone.expose': 'Expose tactic',
+      'msg.copyReddit': 'Reddit (markdown)', 'msg.copyPlain': 'Plain text',
+      'msg.copiedReddit': '✓ Reddit', 'msg.copiedPlain': '✓ Plain',
+      'msg.sources': 'Sources', 'msg.analysisTitle': "Analysis of the opponent's comment",
+      'msg.analysisHint': '(not for posting)',
+      'set.tab.general': 'General', 'set.tab.setup': 'Setup', 'set.tab.privacy': 'Privacy',
+      'set.provider': 'Provider', 'set.model': 'Model', 'set.customOpt': 'Enter custom model...',
+      'set.customPh': 'exact model name', 'set.apiKey': 'API key', 'set.show': 'show', 'set.hide': 'hide',
+      'set.test': 'Test connection', 'set.testing': 'testing...', 'set.testOk': '✓ Connected', 'set.testReceived': 'Reply received',
+      'set.platform': 'Platform', 'set.tone': 'Tone',
+      'set.export': 'Export conversation history (JSON)', 'set.clear': 'Delete all local data',
+      'set.clearConfirm': 'Delete all settings, conversations and API key?',
+      'set.deleteConfConfirm': 'Delete this conversation?', 'set.save': 'Save and close',
+      'onb.intro': 'Boldclaim needs an API key from an AI provider. You choose, you pay, you stay in control.',
+      'onb.recommended': 'recommended',
+      'onb.anthropic.desc': 'Best counter quality. ~$0.01 per counter with Sonnet.',
+      'onb.openai.desc': 'Solid alternative. ~$0.01 per counter.',
+      'onb.moonshot.desc': 'Cheapest option. ~$0.001 per counter.',
+      'onb.getKey': 'Get key →', 'onb.continue': 'Continue to provider selection',
+      'priv.head': 'How privacy works at Boldclaim:',
+      'priv.1': 'Your API key is stored only in your browser (localStorage).',
+      'priv.2': 'Your counter text goes directly from your browser to your provider.',
+      'priv.3': 'Boldclaim sees neither. We log nothing.',
+      'priv.4': "Your provider (Anthropic, OpenAI, etc.) sees your counters, that's their job. We don't.",
+      'priv.foot': 'Source code public on GitHub. No cookies, no trackers, no analytics.'
+    }
+  };
 
   function boldclaimApp() {
     return {
@@ -709,7 +800,6 @@
       testing: false,
       testStatus: '',
       testStatusOk: null,
-      topics: TOPICS,
       archive: [],
       activeConvId: null,
       dark: document.documentElement.classList.contains('dark'),
@@ -765,7 +855,7 @@
       countUserMsgs() { return this.messages.filter(m => m.role === 'user').length; },
       modelLabel() {
         if (this.hasKey()) return `${this.settings.provider} · ${this.settings.model || this.defaultModel(this.settings.provider)}`;
-        return 'Kein API-Key, Settings öffnen';
+        return this.t('comp.noKey');
       },
       defaultModel(p) { return PROVIDERS[p]?.defaultModel || ''; },
       keyPlaceholder(p) { return PROVIDERS[p]?.keyPlaceholder || ''; },
@@ -783,6 +873,18 @@
         if (this.testStatusOk === true) return 'text-emerald-600 dark:text-emerald-400';
         if (this.testStatusOk === false) return 'text-red-600 dark:text-red-400';
         return 'text-zinc-500';
+      },
+
+      // i18n + topics
+      get topics() { return TOPICS[this.settings.lang] || TOPICS.de; },
+      t(key) {
+        const dict = I18N[this.settings.lang] || I18N.de;
+        return dict[key] || I18N.de[key] || key;
+      },
+      setLang(lang) {
+        this.settings.lang = lang;
+        this.saveSettings();
+        document.documentElement.lang = lang;
       },
 
       // Theme
@@ -813,10 +915,10 @@
             stream: false
           });
           if (reply && reply.toLowerCase().includes('ok')) {
-            this.testStatus = '✓ Verbunden';
+            this.testStatus = this.t('set.testOk');
             this.testStatusOk = true;
           } else {
-            this.testStatus = 'Antwort erhalten';
+            this.testStatus = this.t('set.testReceived');
             this.testStatusOk = true;
           }
         } catch (e) {
@@ -863,7 +965,7 @@
       addImage(file) {
         if (this.pendingImages.length >= 5) return;
         if (file.size > 5 * 1024 * 1024) {
-          alert('Bild zu groß (max 5 MB)');
+          alert(this.t('comp.imgTooLarge'));
           return;
         }
         const reader = new FileReader();
@@ -992,61 +1094,102 @@
 
       fallbackSystemPrompt() {
         const tone = this.settings.tone;
-        let toneInstruction = '';
-        if (tone === 'Sachlich') {
-          toneInstruction = `Sachlich, ohne Häme, faktenfest. Quellen am Ende.
-Strukturiere die Antwort mit Markdown-Headern: '## Punkt' für jeden Hauptgedanken, '## Quellen' am Ende. Bei 1-Punkt-Antworten optional ohne Header.`;
-        } else if (tone === 'Hämisch') {
-          toneInstruction = `Sachlich plus zugespitzte Häme an 1-2 Stellen, nie billig. Quellen am Ende.
-Strukturiere mit '## Punkt' Headern wo es passt.`;
-        } else if (tone === 'Gungho') {
-          toneInstruction = `Vernichtend, keine Konzessionen, nur Aktenlage gegen Behauptung. Schwache eigene Punkte weglassen statt einbauen. Schluss-Satz darf zugespitzt sein. Quellen am Ende.
-Strukturiere ALS NUMERIERTE SECTIONS mit Markdown-Headern: '## 1. Tactic-Name', '## 2. Tactic-Name', '## 3. ...' usw. — jeder Punkt benennt zuerst die Tactic des Gegners (Selbstwiderspruch, Bullshit-Stempel, Quote-Mining, Drei-Ebenen-Verklebung, Disziplin-Wash, Peer-Review-Trumpf, Side-Step usw.), dann 1-2 Sätze Inhalt. Maximum 7 Punkte.`;
-        } else if (tone === 'De-eskalierend') {
-          toneInstruction = 'Validiere Emotion, sanft auf Fakten hinweisen ohne Angriff, Off-Ramp anbieten, Beziehung schützen. Eine flüssige Antwort, keine Section-Header.';
-        } else if (tone === 'Fact-Check pur') {
-          toneInstruction = `Kein Rhetorik, kein Ton. Pro Behauptung: Bewertung (Wahr/Teilweise/Irreführend/Falsch) + korrekte Fakten + Quelle.
-Strukturiere als Sections: '## Behauptung 1', '## Behauptung 2', '## Quellen'.`;
-        } else if (tone === 'Taktik entblößen') {
-          toneInstruction = `Bonusmodus Taktik-Entblößung. Vorgehen:
-1. Identifiziere die rhetorische Tactic des Gegners und benenne sie EXPLIZIT beim Namen. Mögliche Tactics: Quote-Mining, Cherry-Picking, Strohmann, Whataboutism, Goalpost-Verschiebung, "Bullshit"-Stempel, Frame-Kollaps-Verweigerung, Drei-Ebenen-Verklebung, Disziplin-Wash, Peer-Review-Trumpf, Atlas-Network-Talking-Points, Mainstream-Diss, Selbstwiderspruch im selben Post, Side-Step, Selektives Gedächtnis, Verfahrens-Verklebung.
-2. Faktenkorrektur kompakt mit verlinkten Quellen.
-3. Greife NUR die 1-3 größten Schwachstellen an.
-4. Maximum 150 Wörter. Keine Einleitung, kein Wrap-up.
-5. Mitleser-First-Frame.
+        const lang = this.settings.lang;
+        const isDE = lang === 'de';
 
-ZWINGEND als Sections strukturieren mit Markdown-Headern: '## Tactic: <Name>' (oder '## Tactic 1: ...', '## Tactic 2: ...' wenn mehrere), '## Faktenlage', '## Quellen'.`;
+        // Hard language directive — first AND last line of system prompt for emphasis
+        const langTop = isDE
+          ? 'KRITISCH: Antworte AUSSCHLIESSLICH auf Deutsch. Auch Tactic-Namen, Section-Header und Quellen-Hinweise auf Deutsch (Quote-Mining bleibt Quote-Mining, aber kein Mix mit englischen Erklärsätzen).'
+          : 'CRITICAL: Respond ENTIRELY in English. Section headers, tactic names, and all prose must be English. Do not mix in German sentences. Tactic-names: Quote-Mining, Strawman, Whataboutism, Goalpost-shifting, "Bullshit"-stamping, Self-contradiction, Side-step, Cherry-picking, Discipline-wash, Peer-review-trump, Selective memory.';
+
+        let toneInstruction = '';
+        if (tone === 'Sachlich' || tone === 'Hämisch') {
+          toneInstruction = isDE
+            ? `Schreib wie ein Reddit-Kommentar, kein akademisches Paper. Keine generischen Section-Header wie "Faktenkorrektur" oder "Quellen". Wenn Sections sinnvoll sind, dann mit '## kurze Aussage als Header' (max 4 Wörter, klingt wie eine Reddit-Zeile, nicht wie ein Lehrbuch). Maximum 220 Wörter.${tone === 'Hämisch' ? ' Häme an 1-2 Stellen, nie billig.' : ''}`
+            : `Write like a Reddit comment, not an academic paper. No generic section headers like "Fact correction" or "Sources". If sections make sense, use '## short Reddit-line as header' (max 4 words, sounds like a comment, not a textbook). Max 220 words.${tone === 'Snarky' || tone === 'Hämisch' ? ' Sharp jab in 1-2 places, never cheap.' : ''}`;
+        } else if (tone === 'Gungho') {
+          toneInstruction = isDE
+            ? `Vernichtend, keine Konzessionen. Nur Aktenlage gegen Behauptung. Schwache eigene Punkte weglassen.
+
+PFLICHT-STRUKTUR: Numerierte Tactic-Liste. Jede Section ist EIN Tactic-Name (kein Floskel). Format: '## 1. Selbstwiderspruch', '## 2. Quote-Mining', '## 3. Drei-Ebenen-Verklebung' usw. Inhalt jedes Punkts: 1-3 Sätze, direkt am Punkt. Max 7 Punkte. Letzter Absatz (ohne Header) ist scharfer Schluss-Satz.`
+            : `Devastating, no concessions. Only the record vs the claim. Drop weak points.
+
+REQUIRED STRUCTURE: Numbered tactic list. Each section is ONE tactic name (no filler). Format: '## 1. Self-contradiction', '## 2. Quote-Mining', '## 3. Discipline-wash' etc. Each section: 1-3 sentences, on point. Max 7 points. Last paragraph (no header) is a sharp closer.`;
+        } else if (tone === 'De-eskalierend') {
+          toneInstruction = isDE
+            ? 'Validiere Emotion, sanft auf Fakten hinweisen, Off-Ramp anbieten. KEINE Section-Header. Eine flüssige Antwort.'
+            : 'Validate emotion, gently point to facts, offer an off-ramp. NO section headers. One flowing reply.';
+        } else if (tone === 'Fact-Check pur') {
+          toneInstruction = isDE
+            ? `Pro Behauptung: Bewertung (Wahr/Teilweise/Irreführend/Falsch) + korrekte Fakten + Quelle. Section-Header sind die behaupteten Aussagen verkürzt: '## "Bürgergeld lohnt mehr als Arbeit" – falsch'. Keine generischen "Behauptung 1"-Labels.`
+            : `Per claim: rating (True/Partly/Misleading/False) + correct facts + source. Section headers ARE the claim shortened: '## "Welfare pays more than work" – false'. No generic "Claim 1" labels.`;
+        } else if (tone === 'Taktik entblößen') {
+          toneInstruction = isDE
+            ? `Bonusmodus. Erkenne die Tactic des Gegners. Section-Header IST der Tactic-Name pur: '## Quote-Mining' nicht '## Tactic: Quote-Mining'. Bei mehreren: '## Quote-Mining', '## Selbstwiderspruch'. Kein Header "Faktenlage" oder "Quellen" — die Fakten kommen unter dem Tactic-Header in Prosa, Quellen als bare URLs am Ende ohne Header.
+
+Mögliche Tactics: Quote-Mining, Cherry-Picking, Strohmann, Whataboutism, Goalpost-Verschiebung, "Bullshit"-Stempel, Drei-Ebenen-Verklebung, Disziplin-Wash, Peer-Review-Trumpf, Atlas-Network-Talking-Points, Mainstream-Diss, Selbstwiderspruch im selben Post, Side-Step, Selektives Gedächtnis, Verfahrens-Verklebung.
+
+Maximum 150 Wörter. Mitleser-First-Frame. Maximum 3 Tactics.`
+            : `Bonus mode. Identify the opponent's tactic. Section header IS the tactic name only: '## Quote-Mining' not '## Tactic: Quote-Mining'. Multiple: '## Quote-Mining', '## Self-contradiction'. No "Facts" or "Sources" header — facts go inside the tactic section as prose, sources as bare URLs at the end without a header.
+
+Possible tactics: Quote-Mining, Cherry-Picking, Strawman, Whataboutism, Goalpost-shifting, "Bullshit"-stamping, Three-level-conflation, Discipline-wash, Peer-review-trump, Atlas-Network-talking-points, Mainstream-dismissal, Self-contradiction, Side-step, Selective-memory, Procedure-conflation.
+
+Max 150 words. Reader-first frame. Max 3 tactics.`;
         } else {
-          toneInstruction = `Ton: ${tone}. Sachlich faktenfest. Strukturiere mit '## Section'-Headern wo sinnvoll.`;
+          toneInstruction = isDE
+            ? `Ton: ${tone}. Sachlich faktenfest. Section-Header optional als kurze Reddit-artige Aussagen.`
+            : `Tone: ${tone}. Factual. Section headers optional as short Reddit-style lines.`;
         }
 
-        const langInstruction = this.settings.lang === 'en'
-          ? 'IMPORTANT: Respond entirely in English. Translate German source titles inline if helpful. Use English tactic-names too (e.g. Quote-Mining, Strawman, Whataboutism, Goal-post-shifting).\n'
-          : '';
-
-        return `${langInstruction}Du bist Boldclaim, ein Assistent für faktenbasierte Counter-Speech.
-Plattform: ${this.settings.platform}. Sprache: ${this.settings.lang}.
-
-TON-MODUS: ${tone}
-${toneInstruction}
-
-ZWEI-TEIL-FORMAT (PFLICHT):
+        const formatBlock = isDE
+          ? `ZWEI-TEIL-FORMAT (PFLICHT):
 
 Teil 1: ## Analyse
-Zuerst eine kompakte Analyse des Gegner-Kommentars in 3-5 Bullet-Points: was er behauptet, welche Tactics er nutzt (Quote-Mining, Strohmann, Whataboutism, Drei-Ebenen-Verklebung etc.), wo seine größten Schwachstellen sind. Maximum 100 Wörter. Diese Analyse ist NICHT für Reddit, sondern für mich (den User) zur Orientierung.
+Knappe Analyse des Gegner-Kommentars in 3-5 Bullet-Points: was er behauptet, welche Tactics er nutzt, größte Schwachstellen. Max 100 Wörter. NUR für mich, NICHT zum Posten.
 
 Teil 2: Marker auf eigener Zeile genau:
 ~~~REPLY~~~
 
-Teil 3: Der eigentliche Konter im gewählten TON, strukturiert mit '## Section-Headern' nach den Tone-Anweisungen oben. NUR dieser Teil wird kopiert/gepostet.
+Teil 3: Der eigentliche Konter im Ton oben. NUR Teil 3 wird kopiert.`
+          : `TWO-PART FORMAT (REQUIRED):
 
-GENERELLE REGELN:
+Part 1: ## Analysis
+Compact analysis of the opponent's comment in 3-5 bullet points: claims, tactics, weak spots. Max 100 words. FOR ME ONLY, not for posting.
+
+Part 2: marker on its own line, exactly:
+~~~REPLY~~~
+
+Part 3: the actual counter in the tone above. ONLY part 3 gets copied.`;
+
+        const platformLabel = isDE ? this.settings.platform : this.settings.platform.replace('Mündlich', 'Spoken');
+
+        const generalRules = isDE
+          ? `GENERELLE REGELN:
 - Punkt zuerst, Kontext danach
-- Inline-Quellen als bare URLs (keine Markdown-Linkbrackets im Reply nötig — Reddit-format)
-- Wenn unklar was gewünscht, EINMAL nachfragen, beim 2. Turn antworte best-guess
-- Wenn User Bild geschickt hat: lies Text/Kontext im Bild und gehe darauf ein
+- Quellen als bare URLs am Ende des Reply (Reddit-Format ohne Markdown-Linkbrackets)
+- Wenn unklar, EINMAL nachfragen, beim 2. Turn best-guess
+- Wenn User Bild geschickt hat, Text/Kontext im Bild lesen
+- NIEMALS fremdenfeindlich argumentieren. Keine Statistiken die Gruppen pauschal abwerten.`
+          : `GENERAL RULES:
+- Point first, context after
+- Sources as bare URLs at end of reply (Reddit format, no Markdown link brackets)
+- If unclear, ask ONCE; on turn 2 best-guess
+- If user attached image, read text/context in it
+- NEVER xenophobic. No statistics that demean groups wholesale.`;
 
-NIEMALS fremdenfeindlich argumentieren. Keine Statistiken die Gruppen pauschal abwerten.`;
+        return `${langTop}
+
+Du bist Boldclaim, ein Assistent für faktenbasierte Counter-Speech.
+Plattform: ${platformLabel}. Sprache: ${lang}.
+
+TON-MODUS: ${tone}
+${toneInstruction}
+
+${formatBlock}
+
+${generalRules}
+
+${langTop}`;
       },
 
       // Provider call dispatch
@@ -1225,7 +1368,7 @@ NIEMALS fremdenfeindlich argumentieren. Keine Statistiken die Gruppen pauschal a
       },
 
       deleteConversation(id) {
-        if (!confirm('Diese Conversation löschen?')) return;
+        if (!confirm(this.t('set.deleteConfConfirm'))) return;
         this.archive = this.archive.filter(c => c.id !== id);
         localStorage.setItem('boldclaim_archive_v2', JSON.stringify(this.archive));
         if (this.activeConvId === id) this.newChat();
@@ -1255,7 +1398,7 @@ NIEMALS fremdenfeindlich argumentieren. Keine Statistiken die Gruppen pauschal a
       },
 
       clearAll() {
-        if (!confirm('Alle Settings, Conversations und API-Key löschen?')) return;
+        if (!confirm(this.t('set.clearConfirm'))) return;
         ['boldclaim_settings_v2', 'boldclaim_session_v2', 'boldclaim_archive_v2', 'boldclaim_theme'].forEach(k => localStorage.removeItem(k));
         this.messages = [];
         this.archive = [];
