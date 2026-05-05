@@ -89,13 +89,27 @@
     }
     @keyframes sectionFlash {
       0%, 100% { background-color: transparent; }
-      40% { background-color: rgba(250,204,21,0.18); }
+      40% { background-color: rgba(250,204,21,0.28); }
     }
     .section-flash { animation: sectionFlash 1.6s ease; border-radius: 6px; }
     .dark .section-flash { animation: sectionFlashDark 1.6s ease; }
     @keyframes sectionFlashDark {
       0%, 100% { background-color: transparent; }
-      40% { background-color: rgba(250,204,21,0.12); }
+      40% { background-color: rgba(250,204,21,0.18); }
+    }
+    .section-active {
+      background-color: rgba(250,204,21,0.12);
+      border-radius: 6px;
+      padding-left: 0.6em;
+      padding-right: 0.6em;
+      transition: background-color 0.2s ease;
+    }
+    .dark .section-active {
+      background-color: rgba(250,204,21,0.08);
+    }
+    .section-active.section-header {
+      padding-top: 0.3em;
+      padding-bottom: 0.1em;
     }
   </style>
   <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js"></script>
@@ -249,10 +263,24 @@
                 <div class="whitespace-pre-wrap leading-relaxed text-[15px]" style="overflow-wrap: anywhere; word-break: break-word;" x-text="msg.content"></div>
               </template>
               <template x-if="msg.role === 'assistant'">
-                <div class="prose-content text-[15px]"
-                     :class="msg.streaming && 'typing'"
-                     :data-msg-id="msg.id"
-                     x-html="renderMarkdown(msg.content)"></div>
+                <div>
+                  <!-- Analysis (collapsible, only if present) -->
+                  <details x-show="splitContent(msg.content).analysis.length > 0"
+                           class="mb-3 rounded-lg border border-amber-200 dark:border-amber-900/40 bg-amber-50 dark:bg-amber-500/5 group">
+                    <summary class="px-3 py-2 cursor-pointer text-xs font-semibold text-amber-900 dark:text-amber-200 list-none flex items-center gap-2 select-none">
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="transition group-open:rotate-90"><polyline points="9 18 15 12 9 6"/></svg>
+                      Analyse des Gegner-Kommentars
+                      <span class="ml-auto text-[10px] font-normal opacity-60">(nicht zum Posten)</span>
+                    </summary>
+                    <div class="px-3 pb-3 pt-1 prose-content text-[14px] text-amber-950 dark:text-amber-100"
+                         x-html="renderMarkdown(splitContent(msg.content).analysis)"></div>
+                  </details>
+                  <!-- Reply -->
+                  <div class="prose-content text-[15px]"
+                       :class="msg.streaming && 'typing'"
+                       :data-msg-id="msg.id"
+                       x-html="renderMarkdown(splitContent(msg.content).reply)"></div>
+                </div>
               </template>
 
               <!-- Footer (assistant only) -->
@@ -302,7 +330,7 @@
     <footer class="border-t border-zinc-200 dark:border-zinc-800 px-3 sm:px-4 pt-3 pb-4 shrink-0 bg-stone-50 dark:bg-zinc-950">
       <div class="max-w-2xl mx-auto">
 
-        <!-- Quick platform/tone selectors -->
+        <!-- Quick platform/tone/lang selectors -->
         <div class="flex flex-wrap items-center gap-1.5 mb-2 px-1 text-xs">
           <span class="text-zinc-400 dark:text-zinc-600">Für</span>
           <select x-model="settings.platform" @change="saveSettings()"
@@ -321,6 +349,12 @@
             <option>De-eskalierend</option>
             <option>Fact-Check pur</option>
             <option>Taktik entblößen</option>
+          </select>
+          <span class="text-zinc-400 dark:text-zinc-600">in</span>
+          <select x-model="settings.lang" @change="saveSettings()"
+                  class="bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-md px-2 py-1 font-medium text-zinc-700 dark:text-zinc-300 focus:outline-none focus:border-zinc-400 dark:focus:border-zinc-600 cursor-pointer">
+            <option value="de">Deutsch</option>
+            <option value="en">English</option>
           </select>
         </div>
 
@@ -875,6 +909,7 @@
         }
 
         const providerMessages = this.buildProviderMessages();
+        this.activeSection = null;
         const assistantMsg = {
           id: crypto.randomUUID(),
           role: 'assistant',
@@ -884,6 +919,9 @@
           ts: Date.now()
         };
         this.messages.push(assistantMsg);
+        // Reactive proxy reference (Alpine wraps array elements lazily; mutating the local
+        // pre-push object does NOT trigger reactivity, so we re-fetch via index)
+        const idx = this.messages.length - 1;
         this.busy = true;
         this.scrollDown();
 
@@ -893,14 +931,14 @@
             messages: providerMessages,
             stream: true,
             onDelta: (text) => {
-              assistantMsg.content += text;
+              this.messages[idx].content += text;
               this.scrollDown();
             }
           });
         } catch (e) {
-          assistantMsg.error = e.message;
+          this.messages[idx].error = e.message;
         } finally {
-          assistantMsg.streaming = false;
+          this.messages[idx].streaming = false;
           this.busy = false;
           this.currentAbort = null;
           this.persistSession();
@@ -982,16 +1020,29 @@ ZWINGEND als Sections strukturieren mit Markdown-Headern: '## Tactic: <Name>' (o
           toneInstruction = `Ton: ${tone}. Sachlich faktenfest. Strukturiere mit '## Section'-Headern wo sinnvoll.`;
         }
 
-        return `Du bist Boldclaim, ein Assistent für faktenbasierte Counter-Speech.
+        const langInstruction = this.settings.lang === 'en'
+          ? 'IMPORTANT: Respond entirely in English. Translate German source titles inline if helpful. Use English tactic-names too (e.g. Quote-Mining, Strawman, Whataboutism, Goal-post-shifting).\n'
+          : '';
+
+        return `${langInstruction}Du bist Boldclaim, ein Assistent für faktenbasierte Counter-Speech.
 Plattform: ${this.settings.platform}. Sprache: ${this.settings.lang}.
 
 TON-MODUS: ${tone}
 ${toneInstruction}
 
+ZWEI-TEIL-FORMAT (PFLICHT):
+
+Teil 1: ## Analyse
+Zuerst eine kompakte Analyse des Gegner-Kommentars in 3-5 Bullet-Points: was er behauptet, welche Tactics er nutzt (Quote-Mining, Strohmann, Whataboutism, Drei-Ebenen-Verklebung etc.), wo seine größten Schwachstellen sind. Maximum 100 Wörter. Diese Analyse ist NICHT für Reddit, sondern für mich (den User) zur Orientierung.
+
+Teil 2: Marker auf eigener Zeile genau:
+~~~REPLY~~~
+
+Teil 3: Der eigentliche Konter im gewählten TON, strukturiert mit '## Section-Headern' nach den Tone-Anweisungen oben. NUR dieser Teil wird kopiert/gepostet.
+
 GENERELLE REGELN:
 - Punkt zuerst, Kontext danach
-- Inline-Quellen als bare URLs am Ende
-- Kein Markdown, kein Reddit-Quote-Format
+- Inline-Quellen als bare URLs (keine Markdown-Linkbrackets im Reply nötig — Reddit-format)
 - Wenn unklar was gewünscht, EINMAL nachfragen, beim 2. Turn antworte best-guess
 - Wenn User Bild geschickt hat: lies Text/Kontext im Bild und gehe darauf ein
 
@@ -1213,6 +1264,26 @@ NIEMALS fremdenfeindlich argumentieren. Keine Statistiken die Gruppen pauschal a
         this.settings.model = this.defaultModel('anthropic');
       },
 
+      // Split assistant content into analysis + reply
+      splitContent(text) {
+        if (!text) return { analysis: '', reply: '' };
+        const marker = '~~~REPLY~~~';
+        const idx = text.indexOf(marker);
+        if (idx === -1) {
+          // While streaming, treat the whole as analysis-in-progress so the user
+          // sees structured content from the start. The reply renders empty until
+          // the marker arrives.
+          if (text.startsWith('## Analyse') || text.startsWith('# Analyse')) {
+            return { analysis: text.trim(), reply: '' };
+          }
+          return { analysis: '', reply: text };
+        }
+        return {
+          analysis: text.slice(0, idx).trim(),
+          reply: text.slice(idx + marker.length).trim()
+        };
+      },
+
       // Markdown rendering
       escapeHtml(s) {
         return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
@@ -1277,25 +1348,39 @@ NIEMALS fremdenfeindlich argumentieren. Keine Statistiken die Gruppen pauschal a
       lastAssistantSections() {
         for (let i = this.messages.length - 1; i >= 0; i--) {
           const m = this.messages[i];
-          if (m.role === 'assistant' && m.content) return this.parseSections(m.content);
+          if (m.role === 'assistant' && m.content) {
+            return this.parseSections(this.splitContent(m.content).reply);
+          }
         }
         return [];
       },
       selectSection(id) {
         this.activeSection = id;
         this.$nextTick(() => {
-          const el = document.querySelector(`[data-section-id="${id}"]`);
-          if (!el) return;
-          el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-          el.classList.remove('section-flash');
-          void el.offsetWidth;
-          el.classList.add('section-flash');
+          // Clear previous active highlight across all messages
+          document.querySelectorAll('.section-active').forEach(n => n.classList.remove('section-active'));
+          const header = document.querySelector(`[data-section-id="${id}"]`);
+          if (!header) return;
+          header.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          // Walk siblings until next section-header, collect whole paragraph
+          const group = [header];
+          let next = header.nextElementSibling;
+          while (next && !(next.tagName === 'H3' && next.classList.contains('section-header'))) {
+            group.push(next);
+            next = next.nextElementSibling;
+          }
+          group.forEach(el => {
+            el.classList.add('section-active');
+            el.classList.remove('section-flash');
+            void el.offsetWidth;
+            el.classList.add('section-flash');
+          });
         });
       },
 
       // Copy
       copyAs(msg, mode, ev) {
-        let text = msg.content || '';
+        let text = this.splitContent(msg.content || '').reply || msg.content || '';
         if (mode === 'plain') text = this.toPlain(text);
         navigator.clipboard.writeText(text);
         msg.copiedAs = mode;
