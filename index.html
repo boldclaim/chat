@@ -4,7 +4,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
   <meta name="description" content="Boldclaim — Bring your own AI. Wir sehen deine Counter nie.">
-  <meta name="theme-color" content="#0a0a0a">
+  <meta name="theme-color" content="#fafaf9" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#09090b" media="(prefers-color-scheme: dark)">
   <title>Boldclaim</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>•</text></svg>">
   <script src="https://cdn.tailwindcss.com"></script>
@@ -28,7 +29,7 @@
     html, body { height: 100%; overscroll-behavior: none; }
     body { -webkit-font-smoothing: antialiased; }
     .scroll-area::-webkit-scrollbar { width: 6px; }
-    .scroll-area::-webkit-scrollbar-thumb { background: rgba(160,160,160,0.25); border-radius: 3px; }
+    .scroll-area::-webkit-scrollbar-thumb { background: rgba(160,160,160,0.35); border-radius: 3px; }
     .scroll-area::-webkit-scrollbar-track { background: transparent; }
     [x-cloak] { display: none !important; }
     .msg-fade { animation: fadeIn .25s ease-out; }
@@ -36,208 +37,283 @@
     .typing::after {
       content: '▍';
       animation: blink 1s steps(2) infinite;
-      color: rgba(255,255,255,.5);
+      opacity: .5;
       margin-left: 2px;
     }
     @keyframes blink { 50% { opacity: 0; } }
     textarea { field-sizing: content; }
-    .topic-pill { transition: background .15s, transform .1s; }
+    .topic-pill { transition: background .15s, transform .1s, border-color .15s; }
     .topic-pill:active { transform: scale(0.97); }
-    .drag-over { outline: 2px dashed rgba(255,255,255,.3); outline-offset: -8px; border-radius: 18px; }
+    .drag-over { outline: 2px dashed rgba(0,0,0,.25); outline-offset: -8px; border-radius: 18px; }
+    .dark .drag-over { outline-color: rgba(255,255,255,.3); }
     .modal-backdrop { backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
+    /* Sexy radial spotlight in welcome */
+    .hero-bg {
+      background-image: radial-gradient(ellipse 80% 60% at 50% 0%, rgba(120,113,108,0.08), transparent 60%);
+    }
+    .dark .hero-bg {
+      background-image: radial-gradient(ellipse 80% 60% at 50% 0%, rgba(244,244,245,0.06), transparent 60%);
+    }
   </style>
   <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js"></script>
+  <script>
+    // Light default. Dark only if user explicitly toggled.
+    (function() {
+      if (localStorage.getItem('boldclaim_theme') === 'dark') {
+        document.documentElement.classList.add('dark');
+      }
+    })();
+  </script>
 </head>
-<body class="h-full bg-zinc-950 text-zinc-100 font-sans antialiased">
+<body class="h-full bg-stone-50 dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 font-sans antialiased">
 
-<div x-data="boldclaimApp()" x-init="init()" x-cloak class="flex flex-col h-full">
+<div x-data="boldclaimApp()" x-init="init()" x-cloak class="flex h-full">
 
-  <!-- Header -->
-  <header class="flex items-center justify-between px-4 sm:px-6 h-12 border-b border-zinc-800 shrink-0">
-    <div class="flex items-center gap-2">
-      <span class="text-base font-semibold tracking-tight">Boldclaim</span>
-      <span class="text-xs text-zinc-500 font-mono hidden sm:inline">v2.0</span>
-    </div>
-    <div class="flex items-center gap-1">
-      <button @click="newChat()" title="Neuer Chat"
-              class="p-2 rounded-md text-zinc-400 hover:text-zinc-100 hover:bg-zinc-900 transition">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
+  <!-- Sidebar (history) -->
+  <aside x-show="sidebarOpen"
+         x-transition:enter="transition ease-out duration-200"
+         x-transition:enter-start="-translate-x-full sm:translate-x-0 sm:opacity-0"
+         x-transition:enter-end="translate-x-0 opacity-100"
+         x-transition:leave="transition ease-in duration-150"
+         x-transition:leave-start="translate-x-0 opacity-100"
+         x-transition:leave-end="-translate-x-full sm:translate-x-0 sm:opacity-0"
+         @click.outside="sidebarOpen = window.innerWidth >= 1024"
+         class="fixed sm:static inset-y-0 left-0 z-30 w-72 bg-white dark:bg-zinc-900 border-r border-zinc-200 dark:border-zinc-800 flex flex-col shrink-0">
+    <div class="h-12 px-4 flex items-center justify-between border-b border-zinc-200 dark:border-zinc-800">
+      <span class="text-sm font-semibold tracking-tight">Verlauf</span>
+      <button @click="sidebarOpen=false" class="lg:hidden p-1.5 rounded text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
       </button>
-      <button @click="settingsOpen=true" title="Einstellungen"
-              class="p-2 rounded-md text-zinc-400 hover:text-zinc-100 hover:bg-zinc-900 transition">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
-      </button>
     </div>
-  </header>
-
-  <!-- Onboarding banner (if no key) -->
-  <div x-show="!hasKey() && !settingsOpen && messages.length === 0"
-       class="bg-amber-500/10 border-b border-amber-500/20 text-amber-200 text-sm px-4 sm:px-6 py-2 flex items-center justify-between">
-    <span>Du brauchst einen API-Key. Setup in 60 Sekunden.</span>
-    <button @click="settingsOpen=true; settingsTab='onboarding'"
-            class="font-medium underline hover:no-underline">Einrichten</button>
-  </div>
-
-  <!-- Main scroll area -->
-  <main class="flex-1 overflow-y-auto scroll-area"
-        @drop.prevent="handleDrop($event)"
-        @dragover.prevent="dragOver=true"
-        @dragleave="dragOver=false"
-        :class="dragOver && 'drag-over'">
-
-    <!-- Welcome state -->
-    <div x-show="messages.length === 0" class="max-w-2xl mx-auto px-6 pt-16 sm:pt-24 pb-8">
-      <h1 class="text-3xl sm:text-4xl font-semibold tracking-tight">Paste, drop, counter.</h1>
-      <p class="mt-3 text-zinc-400 text-lg">
-        Reddit-Comment einfügen, Screenshot droppen, oder Thema beschreiben.
-      </p>
-      <div class="mt-8 flex flex-wrap gap-2">
-        <template x-for="t in topics" :key="t.label">
-          <button @click="usePill(t)"
-                  class="topic-pill text-sm px-3.5 py-1.5 rounded-full bg-zinc-800/70 hover:bg-zinc-700 text-zinc-200 border border-zinc-700 hover:border-zinc-600">
-            <span x-text="t.label"></span>
+    <button @click="newChat()"
+            class="m-3 px-3 py-2 text-sm font-medium rounded-lg bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 hover:bg-zinc-800 dark:hover:bg-white transition flex items-center justify-center gap-2 shrink-0">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
+      Neuer Chat
+    </button>
+    <div class="flex-1 overflow-y-auto scroll-area px-2 pb-3 space-y-1">
+      <template x-for="conv in archive" :key="conv.id">
+        <div class="group flex items-center gap-1">
+          <button @click="loadConversation(conv.id)"
+                  :class="conv.id === activeConvId ? 'bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100' : 'text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800'"
+                  class="flex-1 min-w-0 text-left px-3 py-2 rounded-lg text-sm transition truncate">
+            <span x-text="conv.title"></span>
           </button>
-        </template>
-      </div>
-      <div class="mt-12 text-xs text-zinc-600">
-        Erstes Mal hier?
-        <button @click="settingsOpen=true; settingsTab='onboarding'"
-                class="underline hover:text-zinc-400">Setup-Anleitung</button>
-        ·
-        <button @click="settingsOpen=true; settingsTab='privacy'"
-                class="underline hover:text-zinc-400">So funktioniert Privacy</button>
-      </div>
-    </div>
-
-    <!-- Messages -->
-    <div x-show="messages.length > 0" class="max-w-2xl mx-auto px-4 sm:px-6 py-6 space-y-6">
-      <template x-for="msg in messages" :key="msg.id">
-        <div :class="msg.role === 'user' ? 'flex justify-end' : 'flex justify-start'" class="msg-fade">
-          <div :class="msg.role === 'user' ? 'bg-zinc-800 border border-zinc-700 rounded-2xl rounded-tr-sm' : 'bg-transparent'"
-               class="max-w-full sm:max-w-[85%] px-4 py-2.5">
-
-            <!-- Images -->
-            <template x-if="msg.images && msg.images.length">
-              <div class="flex flex-wrap gap-2 mb-2">
-                <template x-for="(img, i) in msg.images" :key="i">
-                  <img :src="img" @click="lightboxImg=img"
-                       class="rounded-lg max-h-48 cursor-zoom-in border border-zinc-800">
-                </template>
-              </div>
-            </template>
-
-            <!-- Body -->
-            <div class="whitespace-pre-wrap leading-relaxed text-[15px]"
-                 :class="msg.streaming && 'typing'"
-                 x-text="msg.content"></div>
-
-            <!-- Footer (assistant only) -->
-            <template x-if="msg.role === 'assistant' && !msg.streaming">
-              <div class="mt-2 flex items-center gap-3 text-xs text-zinc-500">
-                <button @click="copy(msg.content, $event)" class="hover:text-zinc-200 flex items-center gap-1">
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
-                  <span x-text="msg.copied ? 'kopiert' : 'kopieren'"></span>
-                </button>
-                <template x-if="msg.sources && msg.sources.length">
-                  <details class="group">
-                    <summary class="cursor-pointer hover:text-zinc-200 list-none flex items-center gap-1">
-                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="transition group-open:rotate-90"><polyline points="9 18 15 12 9 6"/></svg>
-                      <span>Quellen (<span x-text="msg.sources.length"></span>)</span>
-                    </summary>
-                    <div class="mt-2 space-y-1.5 text-zinc-400">
-                      <template x-for="(s, i) in msg.sources" :key="i">
-                        <div class="border-l border-zinc-800 pl-3">
-                          <div class="text-[11px] font-mono text-zinc-500" x-text="s.source"></div>
-                          <div class="text-[12px]" x-text="s.snippet"></div>
-                        </div>
-                      </template>
-                    </div>
-                  </details>
-                </template>
-              </div>
-            </template>
-
-            <!-- Error -->
-            <template x-if="msg.error">
-              <div class="mt-2 text-xs text-red-400 border-l-2 border-red-500/50 pl-2">
-                <span x-text="msg.error"></span>
-                <button @click="settingsOpen=true" class="underline ml-1">Settings</button>
-              </div>
-            </template>
-          </div>
+          <button @click="deleteConversation(conv.id)"
+                  class="opacity-0 group-hover:opacity-100 p-1.5 rounded text-zinc-400 hover:text-red-500 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-2 14a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2L5 6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+          </button>
         </div>
       </template>
+      <div x-show="archive.length === 0" class="text-center text-xs text-zinc-400 dark:text-zinc-600 mt-8 px-4">
+        Hier landen deine Conversations.<br>Erste schreiben, dann erscheint sie.
+      </div>
     </div>
-  </main>
+    <div class="p-3 border-t border-zinc-200 dark:border-zinc-800 text-[11px] text-zinc-400 dark:text-zinc-600">
+      Lokal gespeichert. Wir sehen nichts.
+    </div>
+  </aside>
 
-  <!-- Composer -->
-  <footer class="border-t border-zinc-800 px-3 sm:px-4 pt-3 pb-4 shrink-0 bg-zinc-950">
-    <div class="max-w-2xl mx-auto">
+  <!-- Sidebar overlay (mobile) -->
+  <div x-show="sidebarOpen" x-transition.opacity
+       @click="sidebarOpen=false"
+       class="fixed inset-0 bg-black/30 z-20 lg:hidden"></div>
 
-      <!-- Pending images -->
-      <div x-show="pendingImages.length" class="flex flex-wrap gap-2 mb-2">
-        <template x-for="(img, i) in pendingImages" :key="i">
-          <div class="relative">
-            <img :src="img" class="h-16 w-16 object-cover rounded-md border border-zinc-800">
-            <button @click="pendingImages.splice(i,1)"
-                    class="absolute -top-1.5 -right-1.5 bg-zinc-700 hover:bg-zinc-600 text-zinc-100 rounded-full w-5 h-5 flex items-center justify-center text-xs">×</button>
+  <!-- Main column -->
+  <div class="flex flex-col flex-1 min-w-0">
+
+    <!-- Header -->
+    <header class="flex items-center justify-between px-4 sm:px-6 h-12 border-b border-zinc-200 dark:border-zinc-800 shrink-0 bg-white/70 dark:bg-zinc-950/70 backdrop-blur">
+      <div class="flex items-center gap-2">
+        <button @click="sidebarOpen=!sidebarOpen"
+                title="Verlauf"
+                class="p-2 -ml-2 rounded-md text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+        </button>
+        <span class="text-base font-semibold tracking-tight">Boldclaim</span>
+        <span class="text-xs text-zinc-400 dark:text-zinc-600 font-mono hidden sm:inline">v2</span>
+      </div>
+      <div class="flex items-center gap-1">
+        <button @click="toggleTheme()" :title="dark ? 'Light Mode' : 'Dark Mode'"
+                class="p-2 rounded-md text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition">
+          <svg x-show="!dark" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>
+          <svg x-show="dark" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+        </button>
+        <button @click="settingsOpen=true" title="Einstellungen"
+                class="p-2 rounded-md text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+        </button>
+      </div>
+    </header>
+
+    <!-- Onboarding banner (no key) -->
+    <div x-show="!hasKey() && !settingsOpen && messages.length === 0"
+         class="bg-amber-100 dark:bg-amber-500/10 border-b border-amber-300 dark:border-amber-500/30 text-amber-900 dark:text-amber-200 text-sm px-4 sm:px-6 py-2 flex items-center justify-between">
+      <span>Du brauchst einen API-Key. Setup in 60 Sekunden.</span>
+      <button @click="settingsOpen=true; settingsTab='onboarding'"
+              class="font-semibold underline hover:no-underline">Einrichten</button>
+    </div>
+
+    <!-- Main scroll area -->
+    <main class="flex-1 overflow-y-auto scroll-area"
+          @drop.prevent="handleDrop($event)"
+          @dragover.prevent="dragOver=true"
+          @dragleave="dragOver=false"
+          :class="dragOver && 'drag-over'">
+
+      <!-- Welcome state -->
+      <div x-show="messages.length === 0" class="hero-bg max-w-2xl mx-auto px-6 pt-16 sm:pt-24 pb-8">
+        <h1 class="text-3xl sm:text-5xl font-semibold tracking-tight">Paste, drop, counter.</h1>
+        <p class="mt-4 text-zinc-600 dark:text-zinc-400 text-lg max-w-xl">
+          Reddit-Comment einfügen, Screenshot droppen, oder Thema beschreiben.
+          Boldclaim antwortet sachlich, mit Quellen, in deinem Ton.
+        </p>
+        <div class="mt-8 flex flex-wrap gap-2">
+          <template x-for="t in topics" :key="t.label">
+            <button @click="usePill(t)"
+                    class="topic-pill text-sm px-3.5 py-1.5 rounded-full bg-white dark:bg-zinc-800/70 hover:bg-zinc-50 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-200 border border-zinc-200 dark:border-zinc-700 hover:border-zinc-300 dark:hover:border-zinc-600 shadow-sm">
+              <span x-text="t.label"></span>
+            </button>
+          </template>
+        </div>
+        <div class="mt-12 flex flex-wrap gap-x-3 gap-y-1 text-xs text-zinc-500 dark:text-zinc-500">
+          <button @click="settingsOpen=true; settingsTab='onboarding'" class="underline hover:text-zinc-700 dark:hover:text-zinc-300">Setup-Anleitung</button>
+          <button @click="settingsOpen=true; settingsTab='privacy'" class="underline hover:text-zinc-700 dark:hover:text-zinc-300">Privacy</button>
+          <a href="https://github.com/boldclaim/chat" target="_blank" rel="noopener" class="underline hover:text-zinc-700 dark:hover:text-zinc-300">Code</a>
+        </div>
+      </div>
+
+      <!-- Messages -->
+      <div x-show="messages.length > 0" class="max-w-2xl mx-auto px-4 sm:px-6 py-6 space-y-5">
+        <template x-for="msg in messages" :key="msg.id">
+          <div :class="msg.role === 'user' ? 'flex justify-end' : 'flex justify-start'" class="msg-fade">
+            <div :class="msg.role === 'user'
+                  ? 'bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 rounded-2xl rounded-br-md shadow-sm'
+                  : 'bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 rounded-2xl rounded-bl-md border border-zinc-200 dark:border-zinc-800 shadow-sm'"
+                 class="max-w-full sm:max-w-[88%] px-4 py-3">
+
+              <!-- Images -->
+              <template x-if="msg.images && msg.images.length">
+                <div class="flex flex-wrap gap-2 mb-2">
+                  <template x-for="(img, i) in msg.images" :key="i">
+                    <img :src="img" @click="lightboxImg=img"
+                         class="rounded-lg max-h-48 cursor-zoom-in border border-zinc-300/30 dark:border-zinc-700">
+                  </template>
+                </div>
+              </template>
+
+              <!-- Body -->
+              <div class="whitespace-pre-wrap leading-relaxed text-[15px]"
+                   :class="msg.streaming && 'typing'"
+                   x-text="msg.content"></div>
+
+              <!-- Footer (assistant only) -->
+              <template x-if="msg.role === 'assistant' && !msg.streaming">
+                <div class="mt-2.5 pt-2 border-t border-zinc-100 dark:border-zinc-800 flex items-center gap-3 text-xs text-zinc-500">
+                  <button @click="copy(msg.content, $event)" class="hover:text-zinc-900 dark:hover:text-zinc-200 flex items-center gap-1">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                    <span x-text="msg.copied ? 'kopiert' : 'kopieren'"></span>
+                  </button>
+                  <template x-if="msg.sources && msg.sources.length">
+                    <details class="group">
+                      <summary class="cursor-pointer hover:text-zinc-900 dark:hover:text-zinc-200 list-none flex items-center gap-1">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="transition group-open:rotate-90"><polyline points="9 18 15 12 9 6"/></svg>
+                        <span>Quellen (<span x-text="msg.sources.length"></span>)</span>
+                      </summary>
+                      <div class="mt-2 space-y-1.5 text-zinc-600 dark:text-zinc-400">
+                        <template x-for="(s, i) in msg.sources" :key="i">
+                          <div class="border-l border-zinc-300 dark:border-zinc-700 pl-3">
+                            <div class="text-[11px] font-mono text-zinc-500 dark:text-zinc-500" x-text="s.source"></div>
+                            <div class="text-[12px]" x-text="s.snippet"></div>
+                          </div>
+                        </template>
+                      </div>
+                    </details>
+                  </template>
+                </div>
+              </template>
+
+              <!-- Error -->
+              <template x-if="msg.error">
+                <div class="mt-2 text-xs text-red-600 dark:text-red-400 border-l-2 border-red-500/50 pl-2">
+                  <span x-text="msg.error"></span>
+                  <button @click="settingsOpen=true" class="underline ml-1">Settings</button>
+                </div>
+              </template>
+            </div>
           </div>
         </template>
       </div>
+    </main>
 
-      <div class="flex items-end gap-2 bg-zinc-800/70 rounded-2xl px-3 py-2 border border-zinc-700 ring-1 ring-white/5 shadow-xl shadow-black/40 focus-within:border-zinc-600 focus-within:ring-white/10 transition">
-        <button @click="$refs.fileInput.click()"
-                title="Bild anhängen"
-                class="p-1.5 text-zinc-400 hover:text-zinc-200 transition shrink-0">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
-        </button>
-        <input type="file" multiple accept="image/*" x-ref="fileInput" @change="handleFiles($event)" class="hidden">
-        <textarea x-model="input"
-                  @paste="handlePaste($event)"
-                  @keydown.enter.prevent="if(!$event.shiftKey) send()"
-                  @keydown.cmd.enter.prevent="send()"
-                  @keydown.ctrl.enter.prevent="send()"
-                  rows="1"
-                  :placeholder="busy ? 'Boldclaim antwortet...' : 'Comment einfügen, Bild droppen oder Thema beschreiben...'"
-                  :disabled="busy"
-                  class="flex-1 bg-transparent resize-none outline-none text-[15px] py-1.5 max-h-48 placeholder-zinc-400 text-zinc-50"></textarea>
-        <button @click="busy ? cancel() : send()"
-                :disabled="!busy && !canSend()"
-                :class="busy ? 'bg-red-500/80 hover:bg-red-500' : (canSend() ? 'bg-zinc-100 text-zinc-900 hover:bg-white' : 'bg-zinc-800 text-zinc-600')"
-                class="rounded-full p-1.5 transition shrink-0">
-          <template x-if="!busy">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l14 0M13 6l6 6-6 6"/></svg>
+    <!-- Composer -->
+    <footer class="border-t border-zinc-200 dark:border-zinc-800 px-3 sm:px-4 pt-3 pb-4 shrink-0 bg-stone-50 dark:bg-zinc-950">
+      <div class="max-w-2xl mx-auto">
+
+        <!-- Pending images -->
+        <div x-show="pendingImages.length" class="flex flex-wrap gap-2 mb-2">
+          <template x-for="(img, i) in pendingImages" :key="i">
+            <div class="relative">
+              <img :src="img" class="h-16 w-16 object-cover rounded-md border border-zinc-300 dark:border-zinc-700 shadow-sm">
+              <button @click="pendingImages.splice(i,1)"
+                      class="absolute -top-1.5 -right-1.5 bg-zinc-700 hover:bg-zinc-600 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs">×</button>
+            </div>
           </template>
-          <template x-if="busy">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12" rx="2"/></svg>
-          </template>
-        </button>
+        </div>
+
+        <div class="flex items-end gap-2 bg-white dark:bg-zinc-800/70 rounded-2xl px-3 py-2 border border-zinc-300 dark:border-zinc-700 ring-1 ring-zinc-900/5 dark:ring-white/5 shadow-lg shadow-zinc-900/5 dark:shadow-black/40 focus-within:border-zinc-400 dark:focus-within:border-zinc-600 focus-within:ring-zinc-900/10 dark:focus-within:ring-white/10 transition">
+          <button @click="$refs.fileInput.click()"
+                  title="Bild anhängen"
+                  class="p-1.5 text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-200 transition shrink-0">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
+          </button>
+          <input type="file" multiple accept="image/*" x-ref="fileInput" @change="handleFiles($event)" class="hidden">
+          <textarea x-model="input"
+                    @paste="handlePaste($event)"
+                    @keydown.enter.prevent="if(!$event.shiftKey) send()"
+                    @keydown.cmd.enter.prevent="send()"
+                    @keydown.ctrl.enter.prevent="send()"
+                    rows="1"
+                    :placeholder="busy ? 'Boldclaim antwortet...' : 'Comment einfügen, Bild droppen oder Thema beschreiben...'"
+                    :disabled="busy"
+                    class="flex-1 bg-transparent resize-none outline-none text-[15px] py-1.5 max-h-48 placeholder-zinc-400 dark:placeholder-zinc-500 text-zinc-900 dark:text-zinc-50"></textarea>
+          <button @click="busy ? cancel() : send()"
+                  :disabled="!busy && !canSend()"
+                  :class="busy ? 'bg-red-500/90 hover:bg-red-500 text-white' : (canSend() ? 'bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 hover:bg-black dark:hover:bg-white' : 'bg-zinc-200 dark:bg-zinc-800 text-zinc-400 dark:text-zinc-600')"
+                  class="rounded-full p-2 transition shrink-0 shadow-sm">
+            <template x-if="!busy">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l14 0M13 6l6 6-6 6"/></svg>
+            </template>
+            <template x-if="busy">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12" rx="2"/></svg>
+            </template>
+          </button>
+        </div>
+        <div class="mt-1.5 px-2 flex items-center justify-between text-[11px] text-zinc-500 dark:text-zinc-500">
+          <span x-text="modelLabel()"></span>
+          <span x-show="messages.length > 0" x-text="`${countUserMsgs()} Turn${countUserMsgs()===1?'':'s'}`"></span>
+        </div>
       </div>
-      <div class="mt-1.5 px-2 flex items-center justify-between text-[11px] text-zinc-600">
-        <span x-text="modelLabel()"></span>
-        <span x-show="messages.length > 0" x-text="`${countUserMsgs()} Turn${countUserMsgs()===1?'':'s'}`"></span>
-      </div>
-    </div>
-  </footer>
+    </footer>
+  </div>
 
   <!-- Settings Modal -->
   <div x-show="settingsOpen"
        x-transition.opacity
        @click.self="settingsOpen=false"
-       class="fixed inset-0 modal-backdrop bg-black/60 flex items-end sm:items-center justify-center z-40 p-0 sm:p-4">
+       class="fixed inset-0 modal-backdrop bg-black/40 dark:bg-black/60 flex items-end sm:items-center justify-center z-40 p-0 sm:p-4">
     <div @click.stop
-         class="bg-zinc-900 border-t sm:border border-zinc-800 sm:rounded-2xl w-full sm:max-w-md max-h-[90vh] overflow-y-auto scroll-area">
+         class="bg-white dark:bg-zinc-900 border-t sm:border border-zinc-200 dark:border-zinc-800 sm:rounded-2xl w-full sm:max-w-md max-h-[92vh] overflow-y-auto scroll-area shadow-2xl">
 
       <!-- Tabs -->
-      <div class="flex border-b border-zinc-800 sticky top-0 bg-zinc-900 z-10">
+      <div class="flex border-b border-zinc-200 dark:border-zinc-800 sticky top-0 bg-white dark:bg-zinc-900 z-10">
         <button @click="settingsTab='general'"
-                :class="settingsTab==='general' ? 'text-zinc-100 border-zinc-100' : 'text-zinc-500 border-transparent'"
+                :class="settingsTab==='general' ? 'text-zinc-900 dark:text-zinc-100 border-zinc-900 dark:border-zinc-100' : 'text-zinc-500 border-transparent'"
                 class="flex-1 py-3 text-sm font-medium border-b-2 transition">Allgemein</button>
         <button @click="settingsTab='onboarding'"
-                :class="settingsTab==='onboarding' ? 'text-zinc-100 border-zinc-100' : 'text-zinc-500 border-transparent'"
+                :class="settingsTab==='onboarding' ? 'text-zinc-900 dark:text-zinc-100 border-zinc-900 dark:border-zinc-100' : 'text-zinc-500 border-transparent'"
                 class="flex-1 py-3 text-sm font-medium border-b-2 transition">Setup</button>
         <button @click="settingsTab='privacy'"
-                :class="settingsTab==='privacy' ? 'text-zinc-100 border-zinc-100' : 'text-zinc-500 border-transparent'"
+                :class="settingsTab==='privacy' ? 'text-zinc-900 dark:text-zinc-100 border-zinc-900 dark:border-zinc-100' : 'text-zinc-500 border-transparent'"
                 class="flex-1 py-3 text-sm font-medium border-b-2 transition">Privacy</button>
       </div>
 
@@ -246,9 +322,9 @@
         <!-- General tab -->
         <div x-show="settingsTab==='general'" class="space-y-5">
           <div>
-            <label class="text-xs font-medium text-zinc-400 uppercase tracking-wide">Provider</label>
+            <label class="text-xs font-medium text-zinc-500 dark:text-zinc-400 uppercase tracking-wide">Provider</label>
             <select x-model="settings.provider" @change="onProviderChange()"
-                    class="mt-1.5 w-full bg-zinc-950 border border-zinc-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-zinc-700">
+                    class="mt-1.5 w-full bg-stone-50 dark:bg-zinc-950 border border-zinc-300 dark:border-zinc-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-zinc-500 dark:focus:border-zinc-500">
               <option value="anthropic">Anthropic (Claude)</option>
               <option value="openai">OpenAI (GPT)</option>
               <option value="moonshot">Moonshot (Kimi)</option>
@@ -258,28 +334,28 @@
           </div>
 
           <div>
-            <label class="text-xs font-medium text-zinc-400 uppercase tracking-wide">Modell</label>
+            <label class="text-xs font-medium text-zinc-500 dark:text-zinc-400 uppercase tracking-wide">Modell</label>
             <input x-model="settings.model"
                    :placeholder="defaultModel(settings.provider)"
-                   class="mt-1.5 w-full bg-zinc-950 border border-zinc-800 rounded-lg px-3 py-2 text-sm font-mono focus:outline-none focus:border-zinc-700">
+                   class="mt-1.5 w-full bg-stone-50 dark:bg-zinc-950 border border-zinc-300 dark:border-zinc-700 rounded-lg px-3 py-2 text-sm font-mono focus:outline-none focus:border-zinc-500 dark:focus:border-zinc-500">
           </div>
 
           <div>
-            <label class="text-xs font-medium text-zinc-400 uppercase tracking-wide">API-Key</label>
+            <label class="text-xs font-medium text-zinc-500 dark:text-zinc-400 uppercase tracking-wide">API-Key</label>
             <div class="mt-1.5 flex gap-2">
               <input :type="showKey ? 'text' : 'password'"
                      x-model="settings.apiKey"
                      :placeholder="keyPlaceholder(settings.provider)"
-                     class="flex-1 bg-zinc-950 border border-zinc-800 rounded-lg px-3 py-2 text-sm font-mono focus:outline-none focus:border-zinc-700">
+                     class="flex-1 bg-stone-50 dark:bg-zinc-950 border border-zinc-300 dark:border-zinc-700 rounded-lg px-3 py-2 text-sm font-mono focus:outline-none focus:border-zinc-500 dark:focus:border-zinc-500">
               <button @click="showKey=!showKey"
-                      class="px-3 bg-zinc-800 hover:bg-zinc-700 rounded-lg text-sm">
+                      class="px-3 bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 rounded-lg text-sm border border-zinc-300 dark:border-zinc-700">
                 <span x-text="showKey ? 'verbergen' : 'zeigen'"></span>
               </button>
             </div>
             <div class="mt-2 flex items-center gap-2">
               <button @click="testKey()"
                       :disabled="!settings.apiKey || testing"
-                      class="text-xs px-3 py-1.5 bg-zinc-100 text-zinc-900 hover:bg-white rounded-md font-medium disabled:opacity-50">
+                      class="text-xs px-3 py-1.5 bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 hover:bg-black dark:hover:bg-white rounded-md font-medium disabled:opacity-50">
                 <span x-text="testing ? 'teste...' : 'Verbindung testen'"></span>
               </button>
               <span class="text-xs" :class="testStatusColor()" x-text="testStatus"></span>
@@ -288,9 +364,9 @@
 
           <div class="grid grid-cols-2 gap-3">
             <div>
-              <label class="text-xs font-medium text-zinc-400 uppercase tracking-wide">Plattform</label>
+              <label class="text-xs font-medium text-zinc-500 dark:text-zinc-400 uppercase tracking-wide">Plattform</label>
               <select x-model="settings.platform"
-                      class="mt-1.5 w-full bg-zinc-950 border border-zinc-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-zinc-700">
+                      class="mt-1.5 w-full bg-stone-50 dark:bg-zinc-950 border border-zinc-300 dark:border-zinc-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-zinc-500">
                 <option>Reddit</option>
                 <option>X/Twitter</option>
                 <option>Mündlich</option>
@@ -298,9 +374,9 @@
               </select>
             </div>
             <div>
-              <label class="text-xs font-medium text-zinc-400 uppercase tracking-wide">Ton</label>
+              <label class="text-xs font-medium text-zinc-500 dark:text-zinc-400 uppercase tracking-wide">Ton</label>
               <select x-model="settings.tone"
-                      class="mt-1.5 w-full bg-zinc-950 border border-zinc-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-zinc-700">
+                      class="mt-1.5 w-full bg-stone-50 dark:bg-zinc-950 border border-zinc-300 dark:border-zinc-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-zinc-500">
                 <option>Sachlich</option>
                 <option>Hämisch</option>
                 <option>Gungho</option>
@@ -310,13 +386,13 @@
             </div>
           </div>
 
-          <div class="pt-3 border-t border-zinc-800 space-y-2">
+          <div class="pt-3 border-t border-zinc-200 dark:border-zinc-800 space-y-2">
             <button @click="exportConversations()"
-                    class="w-full text-left text-sm px-3 py-2 bg-zinc-950 hover:bg-zinc-800 rounded-lg border border-zinc-800">
+                    class="w-full text-left text-sm px-3 py-2 bg-stone-50 dark:bg-zinc-950 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg border border-zinc-200 dark:border-zinc-800">
               Conversation-History exportieren (JSON)
             </button>
             <button @click="clearAll()"
-                    class="w-full text-left text-sm px-3 py-2 bg-red-500/5 hover:bg-red-500/15 rounded-lg border border-red-500/20 text-red-300">
+                    class="w-full text-left text-sm px-3 py-2 bg-red-50 dark:bg-red-500/5 hover:bg-red-100 dark:hover:bg-red-500/15 rounded-lg border border-red-200 dark:border-red-500/20 text-red-700 dark:text-red-300">
               Alle lokalen Daten löschen
             </button>
           </div>
@@ -324,43 +400,43 @@
 
         <!-- Onboarding tab -->
         <div x-show="settingsTab==='onboarding'" class="space-y-4 text-sm">
-          <p class="text-zinc-300">Boldclaim braucht einen API-Key von einem KI-Anbieter. Du wählst, du zahlst, du behältst die Kontrolle.</p>
+          <p class="text-zinc-700 dark:text-zinc-300">Boldclaim braucht einen API-Key von einem KI-Anbieter. Du wählst, du zahlst, du behältst die Kontrolle.</p>
 
           <div class="space-y-3">
-            <div class="border border-zinc-800 rounded-lg p-3">
-              <div class="font-medium text-zinc-100">Anthropic (Claude) <span class="text-xs text-zinc-500 font-normal">empfohlen</span></div>
-              <div class="text-zinc-400 text-xs mt-0.5">Beste Counter-Qualität. ~$0.01 pro Counter.</div>
+            <div class="border border-zinc-200 dark:border-zinc-800 rounded-lg p-3 bg-stone-50 dark:bg-zinc-950/50">
+              <div class="font-semibold text-zinc-900 dark:text-zinc-100">Anthropic (Claude) <span class="text-xs text-zinc-500 font-normal">empfohlen</span></div>
+              <div class="text-zinc-600 dark:text-zinc-400 text-xs mt-0.5">Beste Counter-Qualität. ~$0.01 pro Counter mit Sonnet.</div>
               <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener"
-                 class="text-xs text-zinc-100 underline mt-1 inline-block">Key holen →</a>
+                 class="text-xs font-medium text-zinc-900 dark:text-zinc-100 underline mt-1 inline-block">Key holen →</a>
             </div>
-            <div class="border border-zinc-800 rounded-lg p-3">
-              <div class="font-medium text-zinc-100">OpenAI (GPT)</div>
-              <div class="text-zinc-400 text-xs mt-0.5">Solide Alternative. ~$0.01 pro Counter.</div>
+            <div class="border border-zinc-200 dark:border-zinc-800 rounded-lg p-3 bg-stone-50 dark:bg-zinc-950/50">
+              <div class="font-semibold text-zinc-900 dark:text-zinc-100">OpenAI (GPT)</div>
+              <div class="text-zinc-600 dark:text-zinc-400 text-xs mt-0.5">Solide Alternative. ~$0.01 pro Counter.</div>
               <a href="https://platform.openai.com/api-keys" target="_blank" rel="noopener"
-                 class="text-xs text-zinc-100 underline mt-1 inline-block">Key holen →</a>
+                 class="text-xs font-medium text-zinc-900 dark:text-zinc-100 underline mt-1 inline-block">Key holen →</a>
             </div>
-            <div class="border border-zinc-800 rounded-lg p-3">
-              <div class="font-medium text-zinc-100">Moonshot (Kimi)</div>
-              <div class="text-zinc-400 text-xs mt-0.5">Günstigste Option. ~$0.001 pro Counter.</div>
+            <div class="border border-zinc-200 dark:border-zinc-800 rounded-lg p-3 bg-stone-50 dark:bg-zinc-950/50">
+              <div class="font-semibold text-zinc-900 dark:text-zinc-100">Moonshot (Kimi)</div>
+              <div class="text-zinc-600 dark:text-zinc-400 text-xs mt-0.5">Günstigste Option. ~$0.001 pro Counter.</div>
               <a href="https://platform.moonshot.cn" target="_blank" rel="noopener"
-                 class="text-xs text-zinc-100 underline mt-1 inline-block">Key holen →</a>
+                 class="text-xs font-medium text-zinc-900 dark:text-zinc-100 underline mt-1 inline-block">Key holen →</a>
             </div>
           </div>
 
           <button @click="settingsTab='general'"
-                  class="w-full bg-zinc-100 text-zinc-900 hover:bg-white rounded-lg py-2 text-sm font-medium">
+                  class="w-full bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 hover:bg-black dark:hover:bg-white rounded-lg py-2 text-sm font-semibold">
             Weiter zu Provider-Auswahl
           </button>
         </div>
 
         <!-- Privacy tab -->
-        <div x-show="settingsTab==='privacy'" class="space-y-3 text-sm text-zinc-300">
-          <p class="font-medium text-zinc-100">So funktioniert Privacy bei Boldclaim:</p>
-          <ol class="list-decimal pl-5 space-y-1.5 text-zinc-400">
+        <div x-show="settingsTab==='privacy'" class="space-y-3 text-sm text-zinc-700 dark:text-zinc-300">
+          <p class="font-semibold text-zinc-900 dark:text-zinc-100">So funktioniert Privacy bei Boldclaim:</p>
+          <ol class="list-decimal pl-5 space-y-1.5 text-zinc-600 dark:text-zinc-400">
             <li>Dein API-Key wird nur in deinem Browser gespeichert (localStorage).</li>
             <li>Dein Counter-Text geht direkt von deinem Browser zu deinem Provider.</li>
-            <li>Boldclaim sieht beides nie. Wir loggen nur anonyme Pinecone-Queries.</li>
-            <li>Dein Provider (Anthropic, OpenAI, etc.) sieht deine Counter — das ist deren Job. Wir nicht.</li>
+            <li>Boldclaim sieht beides nie. Wir loggen nichts.</li>
+            <li>Dein Provider (Anthropic, OpenAI, etc.) sieht deine Counter, das ist deren Job. Wir nicht.</li>
           </ol>
           <p class="pt-2 text-xs text-zinc-500">
             Quellcode öffentlich auf GitHub. Keine Cookies, keine Tracker, kein Analytics.
@@ -368,7 +444,7 @@
         </div>
 
         <button @click="saveSettings(); settingsOpen=false"
-                class="w-full bg-zinc-100 text-zinc-900 hover:bg-white rounded-lg py-2.5 text-sm font-semibold">
+                class="w-full bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 hover:bg-black dark:hover:bg-white rounded-lg py-2.5 text-sm font-semibold">
           Speichern und schließen
         </button>
       </div>
@@ -386,8 +462,7 @@
 </div>
 
 <script>
-  // WORKER_URL leer = kein Pinecone-Context, kein externer Request, kein Tracking-Vector.
-  // Wenn du später Pinecone-RAG zuschalten willst: hier neue (anonyme) Worker-URL eintragen.
+  // Pinecone-Worker URL — leer = kein externer Request
   const WORKER_URL = '';
 
   const PROVIDERS = {
@@ -421,7 +496,7 @@
     },
     ollama: {
       defaultModel: 'llama3.2',
-      keyPlaceholder: 'localhost:11434',
+      keyPlaceholder: 'http://localhost:11434',
       keyPattern: /./,
       url: 'http://localhost:11434/api/chat',
       vision: false
@@ -451,11 +526,15 @@
       lightboxImg: null,
       settingsOpen: false,
       settingsTab: 'general',
+      sidebarOpen: window.innerWidth >= 1024,
       showKey: false,
       testing: false,
       testStatus: '',
       testStatusOk: null,
       topics: TOPICS,
+      archive: [],
+      activeConvId: null,
+      dark: document.documentElement.classList.contains('dark'),
 
       settings: {
         provider: 'anthropic',
@@ -473,31 +552,53 @@
           try { Object.assign(this.settings, JSON.parse(saved)); } catch (e) {}
         }
         if (!this.settings.model) this.settings.model = this.defaultModel(this.settings.provider);
+        this.loadArchive();
         const session = localStorage.getItem('boldclaim_session_v2');
         if (session) {
           try {
             const s = JSON.parse(session);
             if (s.messages && Date.now() - s.ts < 24 * 3600 * 1000) {
               this.messages = s.messages;
+              this.activeConvId = s.id || null;
             }
           } catch (e) {}
         }
+        window.addEventListener('resize', () => {
+          if (window.innerWidth < 1024 && this.sidebarOpen) this.sidebarOpen = false;
+        });
+      },
+
+      loadArchive() {
+        try {
+          this.archive = JSON.parse(localStorage.getItem('boldclaim_archive_v2') || '[]');
+        } catch (e) { this.archive = []; }
       },
 
       // Computed
       hasKey() { return this.settings.apiKey && this.settings.apiKey.length > 8; },
-      canSend() { return (this.input.trim() || this.pendingImages.length) && this.hasKey() && !this.busy; },
+      canSend() {
+        if (!(this.input.trim() || this.pendingImages.length)) return false;
+        if (this.busy) return false;
+        return this.hasKey();
+      },
       countUserMsgs() { return this.messages.filter(m => m.role === 'user').length; },
       modelLabel() {
-        if (!this.hasKey()) return 'Kein API-Key — Settings öffnen';
-        return `${this.settings.provider} · ${this.settings.model || this.defaultModel(this.settings.provider)}`;
+        if (this.hasKey()) return `${this.settings.provider} · ${this.settings.model || this.defaultModel(this.settings.provider)}`;
+        return 'Kein API-Key, Settings öffnen';
       },
       defaultModel(p) { return PROVIDERS[p]?.defaultModel || ''; },
       keyPlaceholder(p) { return PROVIDERS[p]?.keyPlaceholder || ''; },
       testStatusColor() {
-        if (this.testStatusOk === true) return 'text-emerald-400';
-        if (this.testStatusOk === false) return 'text-red-400';
+        if (this.testStatusOk === true) return 'text-emerald-600 dark:text-emerald-400';
+        if (this.testStatusOk === false) return 'text-red-600 dark:text-red-400';
         return 'text-zinc-500';
+      },
+
+      // Theme
+      toggleTheme() {
+        this.dark = !this.dark;
+        document.documentElement.classList.toggle('dark', this.dark);
+        localStorage.setItem('boldclaim_theme', this.dark ? 'dark' : 'light');
       },
 
       // Settings
@@ -523,7 +624,7 @@
             this.testStatus = '✓ Verbunden';
             this.testStatusOk = true;
           } else {
-            this.testStatus = 'Antwort erhalten, aber unerwartet';
+            this.testStatus = 'Antwort erhalten';
             this.testStatusOk = true;
           }
         } catch (e) {
@@ -581,6 +682,7 @@
       // Send
       async send() {
         if (!this.canSend()) return;
+
         const userMsg = {
           id: crypto.randomUUID(),
           role: 'user',
@@ -588,13 +690,14 @@
           images: [...this.pendingImages],
           ts: Date.now()
         };
+        if (this.messages.length === 0) this.activeConvId = crypto.randomUUID();
         this.messages.push(userMsg);
         this.input = '';
         this.pendingImages = [];
         this.persistSession();
         this.scrollDown();
 
-        // Pinecone-Context fetch — nur wenn WORKER_URL gesetzt ist (sonst kein externer Request)
+        // Pinecone-Context (only if WORKER_URL set)
         let context = { docs: [], systemPrompt: this.fallbackSystemPrompt() };
         if (WORKER_URL) {
           try {
@@ -613,7 +716,6 @@
           } catch (e) { /* fallback */ }
         }
 
-        // Build provider messages
         const providerMessages = this.buildProviderMessages();
         const assistantMsg = {
           id: crypto.randomUUID(),
@@ -662,10 +764,10 @@
 
       buildProviderMessages() {
         const out = [];
+        const visionProvider = PROVIDERS[this.settings.provider]?.vision || false;
         for (const m of this.messages) {
           if (m.role === 'user') {
-            const provider = PROVIDERS[this.settings.provider];
-            if (m.images?.length && provider.vision) {
+            if (m.images?.length && visionProvider) {
               if (this.settings.provider === 'anthropic') {
                 const content = [];
                 for (const img of m.images) {
@@ -696,7 +798,7 @@
         return `Du bist Boldclaim, ein Assistent für faktenbasierte Counter-Speech.
 Plattform: ${this.settings.platform}. Ton: ${this.settings.tone}. Sprache: ${this.settings.lang}.
 Punkt zuerst, max 220 Wörter, Quellen als bare URLs am Ende.
-Niemals fremdenfeindlich argumentieren.`;
+Niemals fremdenfeindlich argumentieren. Wenn ein Punkt nur teils-stimmt, weglassen statt konzedieren bei Gungho-Ton.`;
       },
 
       // Provider call dispatch
@@ -729,12 +831,10 @@ Niemals fremdenfeindlich argumentieren.`;
           signal: ctrl.signal
         });
         if (!res.ok) throw new Error(`Anthropic ${res.status}: ${(await res.text()).slice(0, 200)}`);
-
         if (!stream) {
           const data = await res.json();
           return data.content?.[0]?.text || '';
         }
-
         return this.consumeSSE(res, (event) => {
           if (event.type === 'content_block_delta' && event.delta?.text) onDelta(event.delta.text);
         });
@@ -750,7 +850,7 @@ Niemals fremdenfeindlich argumentieren.`;
           'Content-Type': 'application/json'
         };
         if (provider === 'openrouter') {
-          headers['HTTP-Referer'] = 'https://boldclaim.github.io/boldclaim';
+          headers['HTTP-Referer'] = 'https://boldclaim.github.io/chat';
           headers['X-Title'] = 'Boldclaim';
         }
         const res = await fetch(url, {
@@ -765,12 +865,10 @@ Niemals fremdenfeindlich argumentieren.`;
           signal: ctrl.signal
         });
         if (!res.ok) throw new Error(`${provider} ${res.status}: ${(await res.text()).slice(0, 200)}`);
-
         if (!stream) {
           const data = await res.json();
           return data.choices?.[0]?.message?.content || '';
         }
-
         return this.consumeSSE(res, (event) => {
           const delta = event.choices?.[0]?.delta?.content;
           if (delta) onDelta(delta);
@@ -812,7 +910,7 @@ Niemals fremdenfeindlich argumentieren.`;
               const obj = JSON.parse(line);
               const t = obj.message?.content;
               if (t) { acc += t; onDelta(t); }
-            } catch (e) { /* skip */ }
+            } catch (e) {}
           }
         }
         return acc;
@@ -833,9 +931,7 @@ Niemals fremdenfeindlich argumentieren.`;
               if (!line.startsWith('data: ')) continue;
               const payload = line.slice(6).trim();
               if (payload === '[DONE]') return;
-              try {
-                handler(JSON.parse(payload));
-              } catch (e) { /* skip */ }
+              try { handler(JSON.parse(payload)); } catch (e) {}
             }
           }
         }
@@ -846,37 +942,60 @@ Niemals fremdenfeindlich argumentieren.`;
         try {
           localStorage.setItem('boldclaim_session_v2', JSON.stringify({
             ts: Date.now(),
+            id: this.activeConvId,
             messages: this.messages.slice(-40)
           }));
-        } catch (e) { /* quota */ }
+          if (this.activeConvId && this.messages.length > 0) this.upsertArchive();
+        } catch (e) {}
       },
 
-      newChat() {
-        if (this.messages.length === 0) return;
-        this.archiveCurrentChat();
-        this.messages = [];
-        this.input = '';
-        this.pendingImages = [];
-        localStorage.removeItem('boldclaim_session_v2');
-      },
-
-      archiveCurrentChat() {
+      upsertArchive() {
         try {
-          const archive = JSON.parse(localStorage.getItem('boldclaim_archive_v2') || '[]');
-          archive.unshift({
-            id: crypto.randomUUID(),
+          let archive = JSON.parse(localStorage.getItem('boldclaim_archive_v2') || '[]');
+          const idx = archive.findIndex(c => c.id === this.activeConvId);
+          const entry = {
+            id: this.activeConvId,
             ts: Date.now(),
             title: (this.messages.find(m => m.role === 'user')?.content || 'Conversation').slice(0, 80),
             messages: this.messages
-          });
-          localStorage.setItem('boldclaim_archive_v2', JSON.stringify(archive.slice(0, 50)));
-        } catch (e) { /* quota */ }
+          };
+          if (idx >= 0) archive[idx] = entry;
+          else archive.unshift(entry);
+          archive = archive.slice(0, 50);
+          localStorage.setItem('boldclaim_archive_v2', JSON.stringify(archive));
+          this.archive = archive;
+        } catch (e) {}
+      },
+
+      loadConversation(id) {
+        const conv = this.archive.find(c => c.id === id);
+        if (!conv) return;
+        this.messages = conv.messages;
+        this.activeConvId = conv.id;
+        this.persistSession();
+        if (window.innerWidth < 1024) this.sidebarOpen = false;
+      },
+
+      deleteConversation(id) {
+        if (!confirm('Diese Conversation löschen?')) return;
+        this.archive = this.archive.filter(c => c.id !== id);
+        localStorage.setItem('boldclaim_archive_v2', JSON.stringify(this.archive));
+        if (this.activeConvId === id) this.newChat();
+      },
+
+      newChat() {
+        this.messages = [];
+        this.input = '';
+        this.pendingImages = [];
+        this.activeConvId = null;
+        localStorage.removeItem('boldclaim_session_v2');
       },
 
       exportConversations() {
         try {
-          const archive = JSON.parse(localStorage.getItem('boldclaim_archive_v2') || '[]');
-          const all = this.messages.length ? [{ ts: Date.now(), title: 'aktuell', messages: this.messages }, ...archive] : archive;
+          const all = this.messages.length
+            ? [{ id: this.activeConvId, ts: Date.now(), title: 'aktuell', messages: this.messages }, ...this.archive]
+            : this.archive;
           const blob = new Blob([JSON.stringify(all, null, 2)], { type: 'application/json' });
           const url = URL.createObjectURL(blob);
           const a = document.createElement('a');
@@ -889,10 +1008,10 @@ Niemals fremdenfeindlich argumentieren.`;
 
       clearAll() {
         if (!confirm('Alle Settings, Conversations und API-Key löschen?')) return;
-        localStorage.removeItem('boldclaim_settings_v2');
-        localStorage.removeItem('boldclaim_session_v2');
-        localStorage.removeItem('boldclaim_archive_v2');
+        ['boldclaim_settings_v2', 'boldclaim_session_v2', 'boldclaim_archive_v2', 'boldclaim_theme'].forEach(k => localStorage.removeItem(k));
         this.messages = [];
+        this.archive = [];
+        this.activeConvId = null;
         Object.assign(this.settings, { provider: 'anthropic', model: '', apiKey: '', platform: 'Reddit', tone: 'Sachlich', lang: 'de' });
         this.settings.model = this.defaultModel('anthropic');
       },
