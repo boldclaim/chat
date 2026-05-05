@@ -277,10 +277,11 @@
                     <div class="px-3 pb-3 pt-1 prose-content text-[14px] text-amber-950 dark:text-amber-100"
                          x-html="renderMarkdown(splitContent(msg.content).analysis)"></div>
                   </details>
-                  <!-- Reply -->
-                  <div class="prose-content text-[15px]"
+                  <!-- Reply (click sections to see purpose annotation) -->
+                  <div class="prose-content text-[15px] cursor-pointer"
                        :class="msg.streaming && 'typing'"
                        :data-msg-id="msg.id"
+                       @click="onSectionClick($event)"
                        x-html="renderMarkdown(splitContent(msg.content).reply)"></div>
                 </div>
               </template>
@@ -400,7 +401,7 @@
                 <span class="opacity-70 capitalize" x-text="settings.provider"></span>
                 <span class="opacity-40">·</span>
                 <select x-model="settings.model" @change="customMode = !modelsForProvider().some(m => m.id === settings.model); saveSettings()"
-                        class="bg-transparent border-0 cursor-pointer hover:text-zinc-900 dark:hover:text-zinc-100 outline-none font-mono py-0 pr-4 max-w-[200px] truncate"
+                        class="bg-transparent border-0 cursor-pointer hover:text-zinc-900 dark:hover:text-zinc-100 outline-none font-mono py-0 pr-1"
                         :title="t('set.model')">
                   <template x-for="m in modelsForProvider()" :key="m.id">
                     <option :value="m.id" x-text="m.label"></option>
@@ -419,28 +420,47 @@
     </footer>
   </div>
 
-  <!-- Right sidebar: section structure of latest assistant message -->
-  <aside class="hidden lg:flex flex-col w-72 border-l border-zinc-200 dark:border-zinc-800 bg-stone-50 dark:bg-zinc-950 shrink-0">
-    <div class="h-12 px-4 flex items-center justify-between border-b border-zinc-200 dark:border-zinc-800">
-      <span class="text-sm font-semibold tracking-tight" x-text="t('right.title')"></span>
-      <span class="text-[11px] text-zinc-400 dark:text-zinc-600" x-show="lastAssistantSections().length"
-            x-text="lastAssistantSections().length + ' ' + t('right.sections')"></span>
-    </div>
-    <div class="flex-1 overflow-y-auto scroll-area p-3 space-y-1">
-      <template x-for="(sec, i) in lastAssistantSections()" :key="sec.id">
-        <button @click="selectSection(sec.id)"
-                :class="activeSection === sec.id
-                          ? 'bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 border-zinc-900 dark:border-zinc-100'
-                          : 'bg-white dark:bg-zinc-900 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-800 border-zinc-200 dark:border-zinc-800'"
-                class="w-full text-left px-3 py-2 rounded-lg text-sm border transition-colors flex gap-2 items-start">
-          <span class="text-[11px] font-mono opacity-60 mt-0.5 shrink-0" x-text="(i+1).toString().padStart(2,'0')"></span>
-          <span class="leading-tight" x-text="sec.title"></span>
+  <!-- Floating annotation card (replaces right sidebar) -->
+  <div x-show="activeSection && currentSection()"
+       x-transition:enter="transition ease-out duration-200"
+       x-transition:enter-start="opacity-0 translate-y-3"
+       x-transition:enter-end="opacity-100 translate-y-0"
+       x-transition:leave="transition ease-in duration-150"
+       x-transition:leave-start="opacity-100"
+       x-transition:leave-end="opacity-0 translate-y-3"
+       class="fixed bottom-32 right-4 left-4 sm:left-auto sm:max-w-sm z-30">
+    <div class="bg-white dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-700 rounded-2xl shadow-2xl shadow-black/20 p-4">
+      <div class="flex items-start gap-3">
+        <div class="flex-1 min-w-0">
+          <div class="text-[10px] font-mono uppercase tracking-wider text-zinc-500"
+               x-text="(currentSectionIdx().idx) + ' / ' + currentSectionIdx().total + ' · ' + t('msg.analysisHint').replace(/[()]/g, '').toUpperCase()"></div>
+          <div class="font-semibold text-zinc-900 dark:text-zinc-100 mt-1 leading-tight"
+               x-text="currentSection()?.title"></div>
+          <div class="text-sm text-zinc-600 dark:text-zinc-400 mt-2 leading-relaxed"
+               x-text="currentSection()?.purpose || (settings.lang === 'de' ? 'Keine Zweck-Annotation. Modell hat <!--purpose: ...--> nicht emittiert.' : 'No purpose annotation. Model did not emit <!--purpose: ...-->.')"></div>
+        </div>
+        <button @click="dismissSection()"
+                class="p-1 -m-1 text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 shrink-0"
+                title="Schließen">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
         </button>
-      </template>
-      <div x-show="messages.length > 0 && lastAssistantSections().length === 0" class="text-xs text-zinc-400 dark:text-zinc-600 text-center mt-8 px-2" x-text="t('right.noSections')"></div>
-      <div x-show="messages.length === 0" class="text-xs text-zinc-400 dark:text-zinc-600 text-center mt-8 px-2" x-text="t('right.welcomeHint')"></div>
+      </div>
+      <div class="mt-3 flex gap-2" x-show="currentSectionIdx().total > 1">
+        <button @click="prevSection()"
+                :disabled="currentSectionIdx().idx <= 1"
+                class="flex-1 text-xs px-3 py-1.5 bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 rounded-md disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-1">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
+          <span x-text="settings.lang === 'de' ? 'Zurück' : 'Prev'"></span>
+        </button>
+        <button @click="nextSection()"
+                :disabled="currentSectionIdx().idx >= currentSectionIdx().total"
+                class="flex-1 text-xs px-3 py-1.5 bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 hover:bg-black dark:hover:bg-white rounded-md disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-1">
+          <span x-text="settings.lang === 'de' ? 'Weiter' : 'Next'"></span>
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+        </button>
+      </div>
     </div>
-  </aside>
+  </div>
 
   <!-- Settings Modal -->
   <div x-show="settingsOpen"
@@ -645,14 +665,14 @@
       url: 'https://api.anthropic.com/v1/messages',
       vision: true,
       models: [
-        { id: 'claude-opus-4-7',     label: 'Opus 4.7 (latest, best)' },
-        { id: 'claude-opus-4-latest', label: 'Opus latest (auto-update alias)' },
-        { id: 'claude-sonnet-4-6',   label: 'Sonnet 4.6 (balanced default)' },
-        { id: 'claude-sonnet-4-latest', label: 'Sonnet latest (auto-update)' },
-        { id: 'claude-haiku-4-5',    label: 'Haiku 4.5 (fast, cheap)' },
-        { id: 'claude-haiku-4-latest', label: 'Haiku latest (auto-update)' },
-        { id: 'claude-opus-4-6',     label: 'Opus 4.6' },
-        { id: 'claude-sonnet-4-5',   label: 'Sonnet 4.5' }
+        { id: 'claude-opus-4-7',        label: 'Opus 4.7' },
+        { id: 'claude-opus-4-latest',   label: 'Opus latest' },
+        { id: 'claude-sonnet-4-6',      label: 'Sonnet 4.6' },
+        { id: 'claude-sonnet-4-latest', label: 'Sonnet latest' },
+        { id: 'claude-haiku-4-5',       label: 'Haiku 4.5' },
+        { id: 'claude-haiku-4-latest',  label: 'Haiku latest' },
+        { id: 'claude-opus-4-6',        label: 'Opus 4.6' },
+        { id: 'claude-sonnet-4-5',      label: 'Sonnet 4.5' }
       ]
     },
     openai: {
@@ -1216,16 +1236,38 @@ Knappe Analyse des Gegner-Kommentars in 3-5 Bullet-Points: was er behauptet, wel
 Teil 2: Marker auf eigener Zeile genau:
 ~~~REPLY~~~
 
-Teil 3: Der eigentliche Konter im Ton oben. NUR Teil 3 wird kopiert.`
+Teil 3: Der eigentliche Konter im Ton oben. NUR Teil 3 wird kopiert.
+
+PFLICHT für jeden ## Section-Header in Teil 3:
+Direkt unter dem ## Header (nächste Zeile, vor dem Absatz-Text), füge einen HTML-Kommentar mit Zweck-Annotation:
+<!--purpose: kurze Erklärung was diese Section macht, max 12 Wörter-->
+
+Beispiel:
+## Quote-Mining
+<!--purpose: Belegt dass der Gegner selektiv aus seiner Quelle zitiert hat-->
+Du zitierst nur den einen Halbsatz. Im Original steht zwei Absätze entfernt: "do not necessarily indicate causality"...
+
+Diese Kommentare sind unsichtbar für Reddit-Reader, aber Boldclaim zeigt sie als Popup beim Klick. Pflicht für jede Section.`
           : `TWO-PART FORMAT (REQUIRED):
 
 Part 1: ## Analysis
-Compact analysis of the opponent's comment in 3-5 bullet points: claims, tactics, weak spots. Max 100 words. FOR ME ONLY, not for posting.
+Compact analysis of opponent's comment in 3-5 bullets: claims, tactics, weak spots. Max 100 words. FOR ME ONLY, not for posting.
 
 Part 2: marker on its own line, exactly:
 ~~~REPLY~~~
 
-Part 3: the actual counter in the tone above. ONLY part 3 gets copied.`;
+Part 3: the actual counter in the tone above. ONLY part 3 gets copied.
+
+REQUIRED for every ## Section-Header in part 3:
+Directly under the ## header (next line, before the paragraph text), add an HTML comment with a purpose annotation:
+<!--purpose: brief description of what this section does, max 12 words-->
+
+Example:
+## Quote-Mining
+<!--purpose: Shows opponent quoted selectively from their own source-->
+You quote only that half-sentence. Two paragraphs later the original says "do not necessarily indicate causality"...
+
+These comments are invisible to Reddit readers but Boldclaim shows them as a popup on click. Required for every section.`;
 
         const platformLabel = isDE ? this.settings.platform : this.settings.platform.replace('Mündlich', 'Spoken');
 
@@ -1263,16 +1305,26 @@ Part 3: the actual counter in the tone above. ONLY part 3 gets copied.`;
 
         const voiceBlock = (this.settings.voiceSample && this.settings.voiceSample.trim().length > 0)
           ? (isDE
-              ? `\n\nVOICE-REFERENCE (Schreibstil-Vorbild des Users, in diesem Rhythmus, Wortwahl und Eigenheiten antworten):
----
+              ? `\n\nVOICE-REFERENCE (LIES DAS ZUERST, BEVOR DU ANTWORTEST. Das ist der Schreibstil des Users, du sollst exakt so klingen):
+=== VOICE START ===
 ${this.settings.voiceSample.trim()}
----
-Imitiere Satzlänge, Vokabular, Eigenheiten. Stilregeln oben überschreiben das nicht — kombiniere beides.`
-              : `\n\nVOICE-REFERENCE (user's writing-voice template, match this rhythm, vocabulary and quirks):
----
+=== VOICE END ===
+
+Vorgehen:
+1. Lies VOICE komplett durch.
+2. Identifiere: typische Satzlänge, Lieblings-Verben, Eigenheiten, was vermieden wird.
+3. Schreibe deinen Reply in genau diesem Stil. Der User soll glauben es sei seine eigene Stimme.
+Anti-KI-Regeln oben gelten zusätzlich, KEIN Widerspruch zu Voice.`
+              : `\n\nVOICE-REFERENCE (READ THIS FIRST BEFORE ANSWERING. This is the user's writing voice, sound exactly like this):
+=== VOICE START ===
 ${this.settings.voiceSample.trim()}
----
-Match sentence length, vocabulary, quirks. Style rules above still apply on top.`)
+=== VOICE END ===
+
+Process:
+1. Read VOICE in full.
+2. Identify: typical sentence length, favorite verbs, quirks, what's avoided.
+3. Write your reply in exactly this style. The user should believe it is his own voice.
+Anti-AI rules above still apply, no contradiction with VOICE.`)
           : '';
 
         const generalRules = isDE
@@ -1549,6 +1601,8 @@ ${langTop}`;
       },
       renderMarkdown(text) {
         if (!text) return '';
+        // Strip purpose comments (extracted separately for popup) before any other processing
+        text = text.replace(/<!--\s*purpose:[\s\S]*?-->/g, '');
         let html = this.escapeHtml(text);
         // Code spans
         html = html.replace(/`([^`\n]+)`/g, '<code class="font-mono text-[0.9em] bg-zinc-100 dark:bg-zinc-800 rounded px-1">$1</code>');
@@ -1590,13 +1644,16 @@ ${langTop}`;
         return blocks.join('');
       },
 
-      // Section parsing
+      // Section parsing — extracts title AND purpose annotation (<!--purpose: ...-->)
       parseSections(text) {
         if (!text) return [];
         const sections = [];
-        for (const m of text.matchAll(/^##\s+(.+)$/gm)) {
+        // Header followed optionally by a purpose-comment on the next non-empty line
+        const re = /^##\s+(.+?)\s*$\s*(?:<!--\s*purpose:\s*([\s\S]+?)\s*-->)?/gm;
+        for (const m of text.matchAll(re)) {
           const title = m[1].trim();
-          sections.push({ id: this.slugify(title), title });
+          const purpose = (m[2] || '').trim().replace(/\s+/g, ' ');
+          sections.push({ id: this.slugify(title), title, purpose });
         }
         return sections;
       },
@@ -1609,15 +1666,35 @@ ${langTop}`;
         }
         return [];
       },
+      currentSection() {
+        return this.lastAssistantSections().find(s => s.id === this.activeSection);
+      },
+      currentSectionIdx() {
+        const sections = this.lastAssistantSections();
+        const i = sections.findIndex(s => s.id === this.activeSection);
+        return { idx: i + 1, total: sections.length };
+      },
+      prevSection() {
+        const sections = this.lastAssistantSections();
+        const i = sections.findIndex(s => s.id === this.activeSection);
+        if (i > 0) this.selectSection(sections[i - 1].id);
+      },
+      nextSection() {
+        const sections = this.lastAssistantSections();
+        const i = sections.findIndex(s => s.id === this.activeSection);
+        if (i >= 0 && i < sections.length - 1) this.selectSection(sections[i + 1].id);
+      },
+      dismissSection() {
+        this.activeSection = null;
+        document.querySelectorAll('.section-active').forEach(n => n.classList.remove('section-active'));
+      },
       selectSection(id) {
         this.activeSection = id;
         this.$nextTick(() => {
-          // Clear previous active highlight across all messages
           document.querySelectorAll('.section-active').forEach(n => n.classList.remove('section-active'));
           const header = document.querySelector(`[data-section-id="${id}"]`);
           if (!header) return;
           header.scrollIntoView({ behavior: 'smooth', block: 'start' });
-          // Walk siblings until next section-header, collect whole paragraph
           const group = [header];
           let next = header.nextElementSibling;
           while (next && !(next.tagName === 'H3' && next.classList.contains('section-header'))) {
@@ -1631,6 +1708,26 @@ ${langTop}`;
             el.classList.add('section-flash');
           });
         });
+      },
+      // Click anywhere within a section paragraph to activate
+      onSectionClick(e) {
+        const direct = e.target.closest('[data-section-id]');
+        if (direct) {
+          this.selectSection(direct.dataset.sectionId);
+          return;
+        }
+        let el = e.target;
+        while (el && el.classList && !el.classList.contains('prose-content')) {
+          let sibling = el.previousElementSibling;
+          while (sibling) {
+            if (sibling.tagName === 'H3' && sibling.classList?.contains('section-header')) {
+              this.selectSection(sibling.dataset.sectionId);
+              return;
+            }
+            sibling = sibling.previousElementSibling;
+          }
+          el = el.parentElement;
+        }
       },
 
       // Copy
