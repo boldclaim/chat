@@ -54,6 +54,49 @@
     .dark .hero-bg {
       background-image: radial-gradient(ellipse 80% 60% at 50% 0%, rgba(244,244,245,0.06), transparent 60%);
     }
+    /* Markdown content styling */
+    .prose-content { line-height: 1.6; word-wrap: break-word; overflow-wrap: anywhere; }
+    .prose-content p { margin: 0 0 0.65em 0; }
+    .prose-content p:last-child { margin-bottom: 0; }
+    .prose-content strong { font-weight: 600; }
+    .prose-content em { font-style: italic; }
+    .prose-content ul { list-style: disc; padding-left: 1.4em; margin: 0.5em 0; }
+    .prose-content ol { list-style: decimal; padding-left: 1.6em; margin: 0.5em 0; }
+    .prose-content li { margin: 0.2em 0; }
+    .prose-content h3.section-header {
+      font-size: 0.85em;
+      font-weight: 600;
+      letter-spacing: 0.01em;
+      margin: 0.9em 0 0.3em 0;
+      padding-top: 0.2em;
+      color: inherit;
+      scroll-margin-top: 60px;
+    }
+    .prose-content h3.section-header:first-child { margin-top: 0; padding-top: 0; }
+    .prose-content a.link {
+      color: inherit;
+      text-decoration: underline;
+      text-underline-offset: 2px;
+      word-break: break-all;
+      overflow-wrap: anywhere;
+    }
+    .prose-content a.link:hover { text-decoration-thickness: 2px; }
+    .prose-content blockquote {
+      border-left: 3px solid currentColor;
+      opacity: .7;
+      padding-left: 0.8em;
+      margin: 0.5em 0;
+    }
+    @keyframes sectionFlash {
+      0%, 100% { background-color: transparent; }
+      40% { background-color: rgba(250,204,21,0.18); }
+    }
+    .section-flash { animation: sectionFlash 1.6s ease; border-radius: 6px; }
+    .dark .section-flash { animation: sectionFlashDark 1.6s ease; }
+    @keyframes sectionFlashDark {
+      0%, 100% { background-color: transparent; }
+      40% { background-color: rgba(250,204,21,0.12); }
+    }
   </style>
   <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js"></script>
   <script>
@@ -202,16 +245,26 @@
               </template>
 
               <!-- Body -->
-              <div class="whitespace-pre-wrap leading-relaxed text-[15px]"
-                   :class="msg.streaming && 'typing'"
-                   x-text="msg.content"></div>
+              <template x-if="msg.role === 'user'">
+                <div class="whitespace-pre-wrap leading-relaxed text-[15px]" style="overflow-wrap: anywhere; word-break: break-word;" x-text="msg.content"></div>
+              </template>
+              <template x-if="msg.role === 'assistant'">
+                <div class="prose-content text-[15px]"
+                     :class="msg.streaming && 'typing'"
+                     :data-msg-id="msg.id"
+                     x-html="renderMarkdown(msg.content)"></div>
+              </template>
 
               <!-- Footer (assistant only) -->
               <template x-if="msg.role === 'assistant' && !msg.streaming">
-                <div class="mt-2.5 pt-2 border-t border-zinc-100 dark:border-zinc-800 flex items-center gap-3 text-xs text-zinc-500">
-                  <button @click="copy(msg.content, $event)" class="hover:text-zinc-900 dark:hover:text-zinc-200 flex items-center gap-1">
+                <div class="mt-2.5 pt-2 border-t border-zinc-100 dark:border-zinc-800 flex flex-wrap items-center gap-3 text-xs text-zinc-500">
+                  <button @click="copyAs(msg, 'reddit', $event)" class="hover:text-zinc-900 dark:hover:text-zinc-200 flex items-center gap-1">
                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
-                    <span x-text="msg.copied ? 'kopiert' : 'kopieren'"></span>
+                    <span x-text="msg.copiedAs === 'reddit' ? '✓ Reddit' : 'Reddit (Markdown)'"></span>
+                  </button>
+                  <button @click="copyAs(msg, 'plain', $event)" class="hover:text-zinc-900 dark:hover:text-zinc-200 flex items-center gap-1">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                    <span x-text="msg.copiedAs === 'plain' ? '✓ Plain' : 'Plain Text'"></span>
                   </button>
                   <template x-if="msg.sources && msg.sources.length">
                     <details class="group">
@@ -317,6 +370,33 @@
       </div>
     </footer>
   </div>
+
+  <!-- Right sidebar: section structure of latest assistant message -->
+  <aside class="hidden lg:flex flex-col w-72 border-l border-zinc-200 dark:border-zinc-800 bg-stone-50 dark:bg-zinc-950 shrink-0">
+    <div class="h-12 px-4 flex items-center justify-between border-b border-zinc-200 dark:border-zinc-800">
+      <span class="text-sm font-semibold tracking-tight">Aufbau</span>
+      <span class="text-[11px] text-zinc-400 dark:text-zinc-600" x-show="lastAssistantSections().length"
+            x-text="lastAssistantSections().length + ' Sections'"></span>
+    </div>
+    <div class="flex-1 overflow-y-auto scroll-area p-3 space-y-1">
+      <template x-for="(sec, i) in lastAssistantSections()" :key="sec.id">
+        <button @click="selectSection(sec.id)"
+                :class="activeSection === sec.id
+                          ? 'bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 border-zinc-900 dark:border-zinc-100'
+                          : 'bg-white dark:bg-zinc-900 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-800 border-zinc-200 dark:border-zinc-800'"
+                class="w-full text-left px-3 py-2 rounded-lg text-sm border transition-colors flex gap-2 items-start">
+          <span class="text-[11px] font-mono opacity-60 mt-0.5 shrink-0" x-text="(i+1).toString().padStart(2,'0')"></span>
+          <span class="leading-tight" x-text="sec.title"></span>
+        </button>
+      </template>
+      <div x-show="messages.length > 0 && lastAssistantSections().length === 0" class="text-xs text-zinc-400 dark:text-zinc-600 text-center mt-8 px-2">
+        Aktuelle Antwort hat keine Section-Struktur. Probier den Ton "Taktik entblößen" oder "Gungho".
+      </div>
+      <div x-show="messages.length === 0" class="text-xs text-zinc-400 dark:text-zinc-600 text-center mt-8 px-2">
+        Hier zeigt sich der Aufbau jeder Boldclaim-Antwort. Sections kommen aus den Markdown-Headern (## ...).
+      </div>
+    </div>
+  </aside>
 
   <!-- Settings Modal -->
   <div x-show="settingsOpen"
@@ -600,6 +680,7 @@
       activeConvId: null,
       dark: document.documentElement.classList.contains('dark'),
       customMode: false,
+      activeSection: null,
 
       settings: {
         provider: 'anthropic',
@@ -875,25 +956,30 @@
         const tone = this.settings.tone;
         let toneInstruction = '';
         if (tone === 'Sachlich') {
-          toneInstruction = 'Sachlich, ohne Häme, faktenfest. Quellen am Ende.';
+          toneInstruction = `Sachlich, ohne Häme, faktenfest. Quellen am Ende.
+Strukturiere die Antwort mit Markdown-Headern: '## Punkt' für jeden Hauptgedanken, '## Quellen' am Ende. Bei 1-Punkt-Antworten optional ohne Header.`;
         } else if (tone === 'Hämisch') {
-          toneInstruction = 'Sachlich plus zugespitzte Häme an 1-2 Stellen, nie billig. Quellen am Ende.';
+          toneInstruction = `Sachlich plus zugespitzte Häme an 1-2 Stellen, nie billig. Quellen am Ende.
+Strukturiere mit '## Punkt' Headern wo es passt.`;
         } else if (tone === 'Gungho') {
-          toneInstruction = 'Vernichtend, keine Konzessionen, nur Aktenlage gegen Behauptung. Schwache eigene Punkte weglassen statt einbauen. Schluss-Satz darf zugespitzt sein. Quellen am Ende.';
+          toneInstruction = `Vernichtend, keine Konzessionen, nur Aktenlage gegen Behauptung. Schwache eigene Punkte weglassen statt einbauen. Schluss-Satz darf zugespitzt sein. Quellen am Ende.
+Strukturiere ALS NUMERIERTE SECTIONS mit Markdown-Headern: '## 1. Tactic-Name', '## 2. Tactic-Name', '## 3. ...' usw. — jeder Punkt benennt zuerst die Tactic des Gegners (Selbstwiderspruch, Bullshit-Stempel, Quote-Mining, Drei-Ebenen-Verklebung, Disziplin-Wash, Peer-Review-Trumpf, Side-Step usw.), dann 1-2 Sätze Inhalt. Maximum 7 Punkte.`;
         } else if (tone === 'De-eskalierend') {
-          toneInstruction = 'Validiere Emotion, sanft auf Fakten hinweisen ohne Angriff, Off-Ramp anbieten, Beziehung schützen.';
+          toneInstruction = 'Validiere Emotion, sanft auf Fakten hinweisen ohne Angriff, Off-Ramp anbieten, Beziehung schützen. Eine flüssige Antwort, keine Section-Header.';
         } else if (tone === 'Fact-Check pur') {
-          toneInstruction = 'Kein Rhetorik, kein Ton. Pro Behauptung: Bewertung (Wahr/Teilweise/Irreführend/Falsch) + korrekte Fakten + Quelle. Tabellen-artig.';
+          toneInstruction = `Kein Rhetorik, kein Ton. Pro Behauptung: Bewertung (Wahr/Teilweise/Irreführend/Falsch) + korrekte Fakten + Quelle.
+Strukturiere als Sections: '## Behauptung 1', '## Behauptung 2', '## Quellen'.`;
         } else if (tone === 'Taktik entblößen') {
           toneInstruction = `Bonusmodus Taktik-Entblößung. Vorgehen:
-1. Identifiziere die rhetorische Tactic des Gegners und benenne sie EXPLIZIT beim Namen. Mögliche Tactics: Quote-Mining, Cherry-Picking, Strohmann, Whataboutism, Goalpost-Verschiebung, "Bullshit"-Stempel, Frame-Kollaps-Verweigerung, Drei-Ebenen-Verklebung (Roh-Daten vs Modell-Aggregat vs Kausal-Zuordnung), Disziplin-Wash (fachfremde Autoren als Experten), Peer-Review-Trumpf, Atlas-Network-Talking-Points, Mainstream-Diss, Selbstwiderspruch im selben Post, Side-Step, Selektives Gedächtnis, Verfahrens-Verklebung (verschiedene Spuren in eine Story).
-2. Faktenkorrektur kompakt mit verlinkten Quellen (bare URLs am Ende).
-3. Greife NUR die 1-3 größten Schwachstellen an, nicht jeden Punkt.
+1. Identifiziere die rhetorische Tactic des Gegners und benenne sie EXPLIZIT beim Namen. Mögliche Tactics: Quote-Mining, Cherry-Picking, Strohmann, Whataboutism, Goalpost-Verschiebung, "Bullshit"-Stempel, Frame-Kollaps-Verweigerung, Drei-Ebenen-Verklebung, Disziplin-Wash, Peer-Review-Trumpf, Atlas-Network-Talking-Points, Mainstream-Diss, Selbstwiderspruch im selben Post, Side-Step, Selektives Gedächtnis, Verfahrens-Verklebung.
+2. Faktenkorrektur kompakt mit verlinkten Quellen.
+3. Greife NUR die 1-3 größten Schwachstellen an.
 4. Maximum 150 Wörter. Keine Einleitung, kein Wrap-up.
-5. Erstes Wort soll der Tactic-Name sein. Beispiel: "Quote-Mining: Der Autor schreibt selbst..."
-6. Mitleser sollen die Methode erkennen, nicht der Gegner überzeugt werden.`;
+5. Mitleser-First-Frame.
+
+ZWINGEND als Sections strukturieren mit Markdown-Headern: '## Tactic: <Name>' (oder '## Tactic 1: ...', '## Tactic 2: ...' wenn mehrere), '## Faktenlage', '## Quellen'.`;
         } else {
-          toneInstruction = `Ton: ${tone}. Sachlich faktenfest.`;
+          toneInstruction = `Ton: ${tone}. Sachlich faktenfest. Strukturiere mit '## Section'-Headern wo sinnvoll.`;
         }
 
         return `Du bist Boldclaim, ein Assistent für faktenbasierte Counter-Speech.
@@ -1127,14 +1213,104 @@ NIEMALS fremdenfeindlich argumentieren. Keine Statistiken die Gruppen pauschal a
         this.settings.model = this.defaultModel('anthropic');
       },
 
-      // Misc
-      copy(text, ev) {
-        navigator.clipboard.writeText(text);
-        const msg = this.messages.find(m => m.content === text);
-        if (msg) {
-          msg.copied = true;
-          setTimeout(() => { msg.copied = false; }, 1500);
+      // Markdown rendering
+      escapeHtml(s) {
+        return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+      },
+      slugify(s) {
+        return s.toLowerCase().normalize('NFKD').replace(/[̀-ͯ]/g, '')
+          .replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 60);
+      },
+      renderMarkdown(text) {
+        if (!text) return '';
+        let html = this.escapeHtml(text);
+        // Code spans
+        html = html.replace(/`([^`\n]+)`/g, '<code class="font-mono text-[0.9em] bg-zinc-100 dark:bg-zinc-800 rounded px-1">$1</code>');
+        // Headings ## (assigns slug for sidebar reference)
+        html = html.replace(/^##\s+(.+)$/gm, (m, t) => {
+          const slug = this.slugify(t);
+          const safe = this.escapeHtml(t);
+          return `<h3 class="section-header" data-section-id="${slug}">${safe}</h3>`;
+        });
+        // Bold
+        html = html.replace(/\*\*([^*\n]+?)\*\*/g, '<strong>$1</strong>');
+        // Italic
+        html = html.replace(/(?<![*\w])\*([^*\n]+?)\*(?![*\w])/g, '<em>$1</em>');
+        // Markdown links
+        html = html.replace(/\[([^\]]+)\]\(([^)\s]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer" class="link">$1</a>');
+        // Bare http(s) URLs
+        html = html.replace(/(?<!["=>\w])(https?:\/\/[^\s<)]+)/g, '<a href="$1" target="_blank" rel="noopener noreferrer" class="link">$1</a>');
+        // Bare common domains
+        const domains = ['bka.de','tagesschau.de','destatis.de','bundesverfassungsgericht.de','pubmed.ncbi.nlm.nih.gov','correctiv.org','pei.de','bundestag.de','rki.de','mediendienst-integration.de','spiegel.de','welt.de','zeit.de','sueddeutsche.de','faz.net','afd.de','t-online.de','nordkurier.de','kfn.de','svr-migration.de','iab.de','ifo.de','kriminologie.uni-koeln.de','volksverpetzer.de','abgeordnetenwatch.de','dserver.bundestag.de','zdfheute.de'];
+        for (const d of domains) {
+          const re = new RegExp(`(?<!["'>\\w/.])(${d.replace(/\./g,'\\.')}\\/[^\\s<,;)]*)`, 'g');
+          html = html.replace(re, '<a href="https://$1" target="_blank" rel="noopener noreferrer" class="link">$1</a>');
         }
+        // Bullet lists
+        html = html.replace(/(^|\n)((?:- [^\n]+\n?)+)/g, (_m, pre, block) => {
+          const items = block.trim().split('\n').map(l => l.replace(/^- /, '').trim()).filter(Boolean);
+          return pre + '<ul>' + items.map(i => `<li>${i}</li>`).join('') + '</ul>';
+        });
+        // Numbered lists
+        html = html.replace(/(^|\n)((?:\d+\. [^\n]+\n?)+)/g, (_m, pre, block) => {
+          const items = block.trim().split('\n').map(l => l.replace(/^\d+\.\s*/, '').trim()).filter(Boolean);
+          return pre + '<ol>' + items.map(i => `<li>${i}</li>`).join('') + '</ol>';
+        });
+        // Paragraphs
+        const blocks = html.split(/\n\n+/).map(b => {
+          if (b.match(/^\s*<(h3|ul|ol|blockquote)/)) return b;
+          return '<p>' + b.replace(/\n/g, '<br>') + '</p>';
+        });
+        return blocks.join('');
+      },
+
+      // Section parsing
+      parseSections(text) {
+        if (!text) return [];
+        const sections = [];
+        for (const m of text.matchAll(/^##\s+(.+)$/gm)) {
+          const title = m[1].trim();
+          sections.push({ id: this.slugify(title), title });
+        }
+        return sections;
+      },
+      lastAssistantSections() {
+        for (let i = this.messages.length - 1; i >= 0; i--) {
+          const m = this.messages[i];
+          if (m.role === 'assistant' && m.content) return this.parseSections(m.content);
+        }
+        return [];
+      },
+      selectSection(id) {
+        this.activeSection = id;
+        this.$nextTick(() => {
+          const el = document.querySelector(`[data-section-id="${id}"]`);
+          if (!el) return;
+          el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          el.classList.remove('section-flash');
+          void el.offsetWidth;
+          el.classList.add('section-flash');
+        });
+      },
+
+      // Copy
+      copyAs(msg, mode, ev) {
+        let text = msg.content || '';
+        if (mode === 'plain') text = this.toPlain(text);
+        navigator.clipboard.writeText(text);
+        msg.copiedAs = mode;
+        setTimeout(() => { msg.copiedAs = null; }, 1500);
+      },
+      toPlain(text) {
+        return text
+          .replace(/`([^`]+)`/g, '$1')
+          .replace(/\*\*([^*]+)\*\*/g, '$1')
+          .replace(/(?<!\*)\*([^*]+)\*(?!\*)/g, '$1')
+          .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '$1 ($2)')
+          .replace(/^#{1,6}\s+/gm, '')
+          .replace(/^>\s?/gm, '')
+          .replace(/^- /gm, '• ')
+          .trim();
       },
 
       scrollDown() {
